@@ -330,7 +330,7 @@ begin
   end;
   h=4; v=v+(vs+17);
   if (IsStandardProduct) then begin
-    if (HasMultiCurrency or HasBase2) then begin
+    if (HasMultiCurrency or HasBase2 or (HasIntegratedNL and HasLocalization("PRT"))) then begin
       MatrixBegin(5,vm=v,-50,-46,-,rownr);
     end else begin
       MatrixBegin(5,vm=v,-25,-46,-,rownr);
@@ -345,7 +345,7 @@ begin
   Flip(flipnr); flipnr = flipnr + 1;
   MatCol(1,hpos=32,"Account",0,AccNumber,false,AccSClass); hpos = hpos + 69;
   if (HasObjects) then begin
-    MatCol(1,hpos,"Objects",0,Objects,false,ObjSClass); hpos = hpos + 140;
+    MatCol(1,hpos,"Tags/Objects",0,Objects,false,ObjSClass); hpos = hpos + 140;
 //  MatCol(1,-400,"Short.",0,ACShort,false,ACShortSClass); // what the hell is this? Karl
     MatCol(1,hpos,"Description",0,Comment,false,0); hpos = hpos + 160; // -349    
     if (HasExtraNLComment) then begin
@@ -362,17 +362,20 @@ begin
       end;
     end;
   end;
-  if (HasLocalization("GBR,LTU,POL")) then begin
+  if ((HasLocalization("GBR,LTU,POL") and IsEnterprise) or HasLocalization("LVA")) then begin
     if (HasMultiCurrency) then begin
       MatCol(1,-240,"Base 1 Debit",0,DebVal,true,0);
-      MatCol(1,-150,"Base 1 Credit",0,CredVal,true,0);
+      MatCol(1,-160,"Base 1 Credit",0,CredVal,true,0);
     end else begin
       MatCol(1,-240,"Debit",0,DebVal,true,0);
-      MatCol(1,-150,"Credit",0,CredVal,true,0);
+      MatCol(1,-160,"Credit",0,CredVal,true,0);
     end;
-    MatCol(1,-60,"#V-Cd#",0,VATCode,false,VATCodeSClass);
-    MatCol(1,-30,"Rvrs",0,RvrsVATCode,false,VATCodeSClass);
+    MatCol(1,-90,"#V-Cd#",0,VATCode,false,VATCodeSClass);
+    MatCol(1,-45,"Rvrs",0,RvrsVATCode,false,VATCodeSClass);
   end else begin
+    if (IsStandardProduct and HasLocalization("PRT")) then begin
+      MatCol(1,hpos,"Type",0,SAFTType,false,SetSClass);
+    end;
     if (HasMultiCurrency) then begin
       MatCol(1,-210,"Base 1 Debit",0,DebVal,true,0);
       MatCol(1,-120,"Base 1 Credit",0,CredVal,true,0);
@@ -380,10 +383,10 @@ begin
       MatCol(1,-210,"Debit",0,DebVal,true,0);
       MatCol(1,-120,"Credit",0,CredVal,true,0);
     end;
-    MatCol(1,-30,"#V-Cd#",0,VATCode,false,VATCodeSClass);
+    MatCol(1,-45,"#V-Cd#",0,VATCode,false,VATCodeSClass);
   end;
   MatText(2,32,"Signature",true);
-  MatColTL(2,108,"",0,M4Code,ViewOnly,0,Sign,false,0);
+  MatColTL(2,108,"",0,M4Code,ViewOnly,10,Sign,false,0);
   MatText(2,160,"Old Trans. Date",true);
   MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
   MatText(3,32,"Corrected by Transaction",true);
@@ -396,7 +399,7 @@ begin
     Flip(flipnr); flipnr = flipnr + 1;
     MatCol(1,hpos=32,"Account",0,AccNumber,false,AccSClass); hpos = hpos + 69;
     if (HasObjects) then begin
-      MatCol(1,hpos,"Objects",0,Objects,false,ObjSClass); hpos = hpos + 140;
+      MatCol(1,hpos,"Tags/Objects",0,Objects,false,ObjSClass); hpos = hpos + 140;
     end else begin
       MatCol(1,hpos,"Description",0,Comment,false,0); hpos = hpos + 160;
     end;
@@ -415,11 +418,18 @@ begin
     MatText(4,32,"Correction to Transaction",true);
     MatColTL(4,215,"",0,M4AppCode,Normal,0,CorrNr,false,0);
   end;
+  if (IsStandardProduct and HasIntegratedNL and HasLocalization("PRT")) then begin
+    Flip(flipnr); flipnr = flipnr + 1;
+    MatCol(1,32,"T",0,Typ,false,SetSClass);
+    MatCol(1,52,"Ser. No.",0,SerNr,false,ARSClass);
+    MatCol(1,112,"Due Date",0,DueDate,false,PasteCurDate);
+    MatCol(1,184,"Company",0,CompCode,false,CUSClass);
+  end;
   if (HasMultiCurrency) then begin
     Flip(flipnr); flipnr = flipnr + 1;
     MatCol(1,hpos=32,"Account",0,AccNumber,false,AccSClass); hpos = hpos + 69;
     if (HasObjects) then begin
-      MatCol(1,hpos,"Objects",0,Objects,false,ObjSClass); hpos = hpos + 140;
+      MatCol(1,hpos,"Tags/Objects",0,Objects,false,ObjSClass); hpos = hpos + 140;
     end else begin
       MatCol(1,hpos,"Description",0,Comment,false,0); hpos = hpos + 160;
     end;
@@ -446,7 +456,7 @@ begin
     Flip(flipnr); flipnr = flipnr + 1;
     MatCol(1,hpos=32,"Account",0,AccNumber,false,AccSClass); hpos = hpos + 69;
     if (HasObjects) then begin
-      MatCol(1,hpos,"Objects",0,Objects,false,ObjSClass);  hpos = hpos + 140;
+      MatCol(1,hpos,"Tags/Objects",0,Objects,false,ObjSClass);  hpos = hpos + 140;
     end else begin
       MatCol(1,hpos,"Description",0,Comment,false,0); hpos = hpos + 160;
     end;
@@ -488,7 +498,7 @@ begin
     MatCol(1,-290,"Account",0,AccNumber,false,AccSClass);
     MatCol(1,-210,"Debit",0,DebVal,true,0);
     MatCol(1,-120,"Credit",0,CredVal,true,0);
-    MatCol(1,-30,"#V-Cd#",0,VATCode,false,VATCodeSClass);
+    MatCol(1,-45,"#V-Cd#",0,VATCode,false,VATCodeSClass);
     MatText(2,32,"Signature",true);
     MatCol(2,108,"",0,Sign,false,0);
     MatText(2,160,"Old Trans. Date",true);
@@ -502,7 +512,7 @@ begin
     Flip(flipnr); flipnr = flipnr + 1;
     MatCol(1,32,"Account",0,AccNumber,false,AccSClass);
     if (HasObjects) then begin
-      MatCol(1,98,"Objects",0,Objects,false,ObjSClass);
+      MatCol(1,98,"Tags/Objects",0,Objects,false,ObjSClass);
     end;
     if (HasExtraNLComment) then begin
       MatCol(1,-590,"Description",0,Comment,false,0);
@@ -527,7 +537,7 @@ begin
     Flip(flipnr); flipnr = flipnr + 1;
     MatCol(1,32,"Account",0,AccNumber,false,AccSClass);
     if (HasObjects) then begin
-      MatCol(1,98,"Objects",0,Objects,false,ObjSClass);
+      MatCol(1,98,"Tags/Objects",0,Objects,false,ObjSClass);
     end;
     if (HasExtraNLComment) then begin
       MatCol(1,-550,"Description",0,Comment,false,0);

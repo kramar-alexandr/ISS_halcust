@@ -1,3 +1,7 @@
+external updating function LongInt UpdateTRVATVI2(record VIVc,var record VATVIVc,Integer);
+external procedure AutomatedSales(string,Integer);
+external function string 60 AddStringToStringList(string,string);
+external updating function LongInt UpdatePPOKNr(LongInt);
 external updating procedure DeletePlannedPayment(string,LongInt,LongInt);
 external updating procedure InvalidatePlannedPayment(string,LongInt);
 external updating procedure VICreatePlannedPayment(record VIVc);
@@ -319,6 +323,8 @@ BEGIN
       OPPUpdateVI(VIp,false);
     case kInvoiceTypeCash:  
       OPPUpdateVI(VIp,false);
+    case kInvoiceTypeEmployee:  
+      OPPUpdateVI(VIp,false);
     case kInvoiceTypeCreditSpecialSales: 
       goto LkInvoiceTypeCredit;
     case kInvoiceTypeCredit:
@@ -327,7 +333,7 @@ LkInvoiceTypeCredit:;
         updateapf = true;
         lVIr.SerNr = VIp.CredInv;
         if (ReadFirstMain(lVIr,1,true)) then begin
-          if (lVIr.InvType==kInvoiceTypeCash or lVIr.InvType==kInvoiceTypeCashInvoiceReceiptPRT) then begin updateapf = false; end;
+          if (lVIr.InvType==kInvoiceTypeEmployee or lVIr.InvType==kInvoiceTypeCash or lVIr.InvType==kInvoiceTypeCashInvoiceReceiptPRT) then begin updateapf = false; end;
         end;
         if (Importing) then begin
           if (VIp.CredInv>VIp.SerNr) then begin
@@ -352,9 +358,10 @@ LkInvoiceTypeCredit:;
     end;
   if (trflg) then begin
     VIUpdatePR(VIp,VI2r,false);
-  end;
-  if (trflg) then begin
     VIUpdateAT2Unit(VIp);
+    if (VIp.InvType==kInvoiceTypeEmployee) then begin
+      VIp.PPOKNr = UpdatePPOKNr(VIp.PPOKNr);
+    end;
   end;
 LVIOK:;  
   RETURN;
@@ -483,6 +490,10 @@ updating function LongInt VIVcRecordSaveAfter(var record VIVc VIr,record VIVc VI
 BEGIN
   LongInt res;
   record ActVc Actr;
+  string 255 autmsgfunciontags;
+  LongInt error;
+  record VATVIVc VATVIr;
+  record VATVIVc oVATVIr;
   
   if ((VIr.OKFlag!=0) and (VIr.Invalid==0)) then begin
     CheckVEBalDate(VIr.VECode,VIr.TransDate);
@@ -491,7 +502,31 @@ BEGIN
     
     BatchMainAccrual(VIr,false);
     UpdateVarianceStatusVI(VIr,false);
-    VICreatePlannedPayment(VIr);
+    VICreatePlannedPayment(VIr);    
+    if (nonblankdate(VIr.VATDate) and (VIr.VATDate!=VIr.TransDate)) then begin
+      error = UpdateTRVATVI2(VIr,VATVIr,0);
+      RecordStore(VATVIr,false);
+      if (ReadFirstMain(VATVIr,1,true)) then begin
+        RecordCopy(oVATVIr,VATVIr);
+        VATVIr.OKFlag = 1;
+        RecordUpdate(oVATVIr,VATVIr,true);
+      end;
+    end;
+    if (IsStandardProduct) then begin 
+      if (VIr.CalcVATVal==0) then begin
+        if (CountRecords("VIVc")>=10) then begin
+          autmsgfunciontags = AddStringToStringList(autmsgfunciontags,"HasVATZone+OK_VIVc");
+        end;
+      end;
+      autmsgfunciontags = AddStringToStringList(autmsgfunciontags,"HasIntegratedNL");
+    end;
+    switch (VIr.InvType) begin
+      case kInvoiceTypeCash:
+        autmsgfunciontags = AddStringToStringList(autmsgfunciontags,"HasModCL+OK_VIVc");
+      case kInvoiceTypeCredit:
+        autmsgfunciontags = AddStringToStringList(autmsgfunciontags,"HasRetGoodsToSupp+OK_VIVc");
+    end;
+    autmsgfunciontags = AddStringToStringList(autmsgfunciontags,"HasModPO+OK_VIVc");
   end;
   if ((VIr.PrelBook!=0) and (VIr.Invalid==0)) then begin
     VIrsPrelBookingStats(VIr,false);
@@ -509,6 +544,7 @@ BEGIN
     end;
     SetKPIsStatus("modPL",kKPIStatusInvalid);
   end;
+  AutomatedSales(autmsgfunciontags,kAutomatedSalesTagRandom);
   VIVcRecordSaveAfter = res;
   RETURN;
 END;
@@ -533,35 +569,35 @@ BEGIN
     end;
     if (RecordStore(APr,true)) then begin end;
   end;
-  RETURN;
-END;
+  return;
+end;
 
 global
 updating function LongInt VIVcRecordUpdate(var record VIVc VIr,record VIVc VI2r,LongInt stat,LongInt long4)
-BEGIN
+begin
   LongInt res;
   Integer i,rwcnt;
   row VIVc VIrw;
   
   VIr.Sign = CurrentUser;
   if ((VIr.OKFlag!=0) and (VI2r.OKFlag==0)) then begin
-  if (VIr.POSerNr<=0) then begin
-    rwcnt = MatRowCnt(VIr);
-    for (i=0;i<rwcnt;i=i+1) begin
-      MatRowGet(VIr,i,VIrw);
-      if (VIrw.stp==1) then begin
-        if (VIrw.PUNr<=0) then begin
-          VIrw.OrdRow = -1;
+    if (VIr.POSerNr<=0) then begin
+      rwcnt = MatRowCnt(VIr);
+      for (i=0;i<rwcnt;i=i+1) begin
+        MatRowGet(VIr,i,VIrw);
+        if (VIrw.stp==1) then begin
+          if (VIrw.PUNr<=0) then begin
+            VIrw.OrdRow = -1;
+          end;
+          VIrw.VarianceAmount = blankval;
+  //        if (Vir.InvType!=kInvoiceTypeCredit or VIr.InvType!=kInvoiceTypeCreditSpecialSales) or (VIr.CredInv<=0) then begin// when we have PUNr we blank it ????
+  //          VIrw.PUNr = -1;
+  //          VIrw.PURow = -1;
+  //        end;
+          MatRowPut(VIr,i,VIrw);
         end;
-        VIrw.VarianceAmount = blankval;
-//        if (Vir.InvType!=kInvoiceTypeCredit or VIr.InvType!=kInvoiceTypeCreditSpecialSales) or (VIr.CredInv<=0) then begin// when we have PUNr we blank it ????
-//          VIrw.PUNr = -1;
-//          VIrw.PURow = -1;
-//        end;
-        MatRowPut(VIr,i,VIrw);
       end;
-    end;
-  end;  
+    end;  
   end;
   if ((VI2r.Invalid==0) and (VIr.Invalid==0)) then begin
     if (VIr.POSerNr!=-1) or (VI2r.POSerNr!=-1) then begin
@@ -607,8 +643,8 @@ BEGIN
     end;
   end;
   VIVcRecordUpdate = res;
-  RETURN;
-END;
+  return;
+end;
 
 updating procedure UpdateVEIV2(record VIVc VIr,record VIVc VI2r)
 begin
@@ -650,6 +686,10 @@ begin
   record TRVc TRr;
   record TRVc oldTRr;
   val bc1v;  
+  string 255 autmsgfunciontags;
+  record VATVIVc VATVIr;
+  record VATVIVc oVATVIr;
+  Integer error;
   
   if ((VIr.Invalid==0) and (VI2r.Invalid==0)) then begin
     if ((VIr.OKFlag!=0) and (VI2r.OKFlag==0)) then begin
@@ -661,11 +701,35 @@ begin
       CheckVEBalDate(VIr.VECode,VIr.TransDate);
       UpdateVarianceStatusVI(VIr,false);
       VICreatePlannedPayment(VIr);
+      if (nonblankdate(VIr.VATDate) and (VIr.VATDate!=VIr.TransDate)) then begin
+        error = UpdateTRVATVI2(VIr,VATVIr,0);
+        RecordStore(VATVIr,false);
+        if (ReadFirstMain(VATVIr,1,true)) then begin
+          RecordCopy(oVATVIr,VATVIr);
+          VATVIr.OKFlag = 1;
+          RecordUpdate(oVATVIr,VATVIr,true);
+        end;
+      end;
       if (VIr.InvType==kInvoiceTypeCredit or VIr.InvType==kInvoiceTypeCreditSpecialSales) then begin
         UpdateBatchTextFromVI(VIr,1);
       end else begin
         UpdateBatchTextFromVI(VIr,0);
       end;
+      if (IsStandardProduct) then begin 
+        if (VIr.CalcVATVal==0) then begin
+          if (CountRecords("VIVc")>=10) then begin
+            autmsgfunciontags = AddStringToStringList(autmsgfunciontags,"HasVATZone+OK_VIVc");
+          end;
+        end;
+        autmsgfunciontags = AddStringToStringList(autmsgfunciontags,"HasIntegratedNL");
+      end;
+      switch (VIr.InvType) begin
+        case kInvoiceTypeCash:
+          autmsgfunciontags = AddStringToStringList(autmsgfunciontags,"HasModCL+OK_VIVc");
+        case kInvoiceTypeCredit:
+          autmsgfunciontags = AddStringToStringList(autmsgfunciontags,"HasRetGoodsToSupp+OK_VIVc");
+      end;
+      autmsgfunciontags = AddStringToStringList(autmsgfunciontags,"HasModPO+OK_VIVc");
     end;  
     if ((VIr.OKFlag==0) and (VI2r.OKFlag!=0)) then begin//unok
       if (VendStats(VI2r,true)) then begin end;
@@ -725,7 +789,7 @@ begin
     end;
   end;
   UpdateVEIV2(VIr,VI2r);
-
+  AutomatedSales(autmsgfunciontags,kAutomatedSalesTagRandom);
   VIVcRecordUpdateAfter = res;
   return;
 end;
@@ -735,13 +799,14 @@ function LongInt VIVcRecordDefaults(var record VIVc VIr,record VIVc VI2r,LongInt
 begin
   LongInt res;
   record AccBlock ARAccb;
-  record APAccBlock APAccRec;
+  record APAccBlock APAb;
   record SRBlock SRRec;
   string 255 tstr;
   val fr,to1,to2,br1,br2;
+  record CUVc VEr;
 
   BlockLoad(SRRec);
-  BlockLoad(APAccRec);
+  BlockLoad(APAb);
   BlockLoad(ARAccb);
   VIr.Invalid = 0;
   VIr.InvType = kInvoiceTypeNormal;
@@ -750,6 +815,7 @@ begin
   VIr.POCQStatNr = -1;
   VIr.POSerNr = -1;
   VIr.CredMark = "";
+  VIr.VATDate = "";
   VIr.SalesMan = CurrentUser;
   GetSalesGroup(VIr.SalesMan,tstr);
   VIr.SalesGroup = tstr;
@@ -767,8 +833,18 @@ begin
   VIr.InvoiceNr = "";
   VIr.OKFlag = 0;
   VIr.PayDeal = "";
-  VIr.APonTR = APAccRec.APonTR;
-  VIr.APAcc = APAccRec.APAcc;
+  VIr.APonTR = APAb.APonTR;
+  VIr.APAcc = APAb.APAcc;
+  VEr.Code = VIr.VECode;
+  ReadFirstMain(VEr,1,true);
+  switch (VEr.OPBookVAT) begin
+    case 1:
+      VIr.OPBookVAT = VEr.OPBookVAT;
+    case 2:
+      VIr.OPBookVAT = 0;  
+    otherwise
+      VIr.OPBookVAT = APAb.OPBookVAT;  
+  end;
   tstr = "";
   GetFullCurncyRate(tstr,VIr.TransDate,fr,to1,to2,br1,br2);
   VIr.CurncyCode = tstr;
@@ -782,6 +858,9 @@ begin
   VIr.VATVal = blankval;
   VIr.HoldSum = blankval;
   VIr.NoTAXonVAT = ARAccb.NoTAXonVAT;
+  if (HasLocalization("RUS")) then begin
+    VIr.OperationCode = "01";
+  end;
   VIVcRecordDefaults = res; 
   RETURN;
 END;
@@ -796,6 +875,7 @@ BEGIN
   record SRBlock SRRec;
   LongInt newnr;
   Boolean nousersernr;
+  record CUVc VEr;
       
   BlockLoad(POSettingRec);
   VIr.Invalid = 0;
@@ -804,6 +884,8 @@ BEGIN
   VIr.POSerNr = -1;
   VIr.CredInv = -1;
   VIr.IVNr = -1;  
+  VIr.RegDate = CurrentDate;
+  VIr.VATDate = "";
   if (SingleUserMode) then begin
     if (VIr.SerNr<=0) then begin
       BlockLoad(SRRec);    
@@ -1084,7 +1166,7 @@ BEGIN
           switch (VIr.InvType) begin
             case kInvoiceTypeNormalSpecialSales: goto LkInvoiceTypeNormal;
             case kInvoiceTypeNormal:
-              LkInvoiceTypeNormal:;
+LkInvoiceTypeNormal:;
               APr.SerNr = VIr.SerNr;
               t = VIr.PayVal - VIr.WithHoldingTax;
               SubtractVIPrePay(VIr,t);
@@ -1108,9 +1190,15 @@ BEGIN
             case kInvoiceTypeCash:
               VIr.Invalid = 1;
               res = 1;
+            case kInvoiceTypeDebit:
+              VIr.Invalid = 1;
+              res = 1;
+            case kInvoiceTypeEmployee:
+              VIr.Invalid = 1;
+              res = 1;
             case kInvoiceTypeCreditSpecialSales: goto LkInvoiceTypeCredit;
             case kInvoiceTypeCredit:
-              LkInvoiceTypeCredit:;
+LkInvoiceTypeCredit:;
               /*
               APr.SerNr = VIr.SerNr;
               if (ReadFirstMain(APr,1,true)) then begin
