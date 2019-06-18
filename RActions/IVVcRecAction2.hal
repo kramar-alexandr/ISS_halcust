@@ -1,0 +1,34 @@
+global
+updating function LongInt IVVcRecordImport(var record IVVc IVr,record IVVc IV2r,LongInt long3,LongInt long4)
+begin
+  LongInt res;
+  row IVVc IVrw;
+  Integer i,rwcnt;
+  LongInt startNo; //cust+
+  Record IVSerBlock IVSerRec; //cust+
+  Row IVSerBlock IVSerrw; //cust+
+
+//cust start
+  if (IVr.SerNr == 0) then begin
+    // custom string instead of number
+    startNo = -1;
+    BlockLoad(IVSerRec);
+    rwcnt = MatRowCnt(IVSerRec);
+    for (i=0; i<rwcnt; i=i+1) begin
+      MatRowGet(IVSerRec,i,IVSerrw);
+      if (IVSerrw.TSerCom == "SLX") then begin
+        startNo = IVSerrw.TSerStart;
+        goTo LFindNumber;
+      end;
+    end;
+LFindNumber:;
+    IVr.SerNr = NextSerNr("IVVc", IVr.TransDate, startNo, false, IVr.LangCode);
+  end;
+//cust end
+  
+  res = inner.IVVcRecordImport(IVr,IV2r,long3,long4);
+
+LIVVcRecordImport:;
+  IVVcRecordImport = res; 
+  return;
+end;

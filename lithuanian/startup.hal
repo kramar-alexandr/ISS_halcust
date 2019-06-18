@@ -1,0 +1,19 @@
+event startup
+begin
+  SetLangMode(LangLithuanian, "LIT", 0);
+  
+  Export("XML arve",eInvoiceEClass,eInvoiceEn,modSL);
+  Setting("E-arvete seadistused",EInvoiceTClass,modSY);
+  Maintenance("MŠŠra e-arve kanalid",DefEInvRcvPrefVClass,DefEInvRcvPrefMn,modSL);//Bk //##ii
+  Setting("E-teenuste ajastamine",EInvQueryIntrvlTClass,modSY);
+
+  SetBegin(667);
+  SetText(0,"Vali teenus");
+  SetText(1,"HansaWorld"); 
+  SetText(2,"Arvete saatmine (Omniva)");
+  SetText(3,"Tarnija arvete vastuv›tmine (Omniva)");
+  EndSet;
+  
+  return;
+end;
+

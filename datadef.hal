@@ -1,0 +1,20 @@
+//81160331 //JL 201604
+begin
+
+  SourceFile("halcust\\english",3);
+  SourceFile("halcust\\estonian",3);
+  SourceFile("halcust\\latvian",3);
+  SourceFile("halcust\\lithuanian",3); 
+  SourceFile("halcust\\Maint",3);
+  SourceFile("halcust\\RActions",3);
+  SourceFile("halcust\\Reports",3);
+  SourceFile("halcust\\Tools",3);
+
+  SourceFile("halcust\\level0\\estonian", 0);
+  SourceFile("halcust\\level0\\ETEENUSED\\amainhal", 0);
+  SourceFile("halcust\\level0\\ETEENUSED\\Ractions", 0);
+  SourceFile("halcust\\level0\\ETEENUSED\\Tools", 0);
+  return;
+end;
+
+

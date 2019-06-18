@@ -1,0 +1,495 @@
+external inner function Boolean AccRuPerBal(record RcVc,Boolean,string,string,var val,var val,var val,var val,var val,var val,
+                                      Integer,Boolean,Date,Date,Date);
+external inner function Boolean GetObjBal(string,string,var record ObjBalVc);
+external inner procedure HT2Per(Date, Date , var string);
+external inner procedure LstRegDat(var string);
+external inner procedure HTObj(string,var string);
+external inner procedure HTOT(string,var string);
+external inner procedure HTAccount(Integer,var string);
+external inner function Boolean DatePrel(Date);
+external inner procedure HTAccPer(Date,Date,var string);
+external inner function Boolean GetNextSep(string,var Integer,var string);
+external inner function Boolean GetNextItem(string,var Integer,var string);
+
+global
+function LongInt GetMonthDiff(Date ia,Date ib)
+begin
+  Date a,b;
+  LongInt res;
+  
+  res = 0;
+  a = ia;
+  b=ib;
+  b.day=DaysInMonth(GetYear(ib),GetMonth(ib));
+  while (a<=b) begin
+    a = AddMonth(a,1);
+    res = res + 1;
+  end;
+  GetMonthDiff = res;
+  return;
+end;
+
+global
+procedure AGrHeaderCust(record RcVc RepSpec,Boolean PLf,Boolean resUseAccum,Date AccumStartDate)
+BEGIN
+  string 255 tstr;
+  Integer rw,oldAccSpec;
+  record BaseCurBlock BC;
+  
+  BlockLoad(BC);
+  
+  rw = 1;  
+  if (PLf==false) then begin
+    HT2Per(RepSpec.sStartDate,RepSpec.sEndDate,tstr);
+    Header(rw,tstr,1);
+    rw = rw + 1;
+    LstRegDat(tstr);
+    Header(rw,tstr,0);  
+    
+    if (blank(RepSpec.CurncyCode)) then begin
+      tstr = USetStr(2513);
+      if (repspec.basecurncy==0) then begin
+        tstr=tstr & BC.BaseCur1;
+      end;
+      if (repspec.basecurncy==1) then begin
+        tstr=tstr & " " & BC.BaseCur2;
+      end;
+      Header(rw,tstr,1);
+      rw = rw + 1;
+    end;
+    
+    if (nonblank(RepSpec.ObjStr)) then begin
+      HTObj(RepSpec.ObjStr,tstr);
+      if ((blank(tstr)) and (nonblank(RepSpec.ObjStr))) then begin
+        tstr = USetStr(5062) & ": " & RepSpec.ObjStr;
+      end;
+      Header(rw,tstr,1);
+      rw = rw + 1;
+    end;    
+    
+    if (nonblank(RepSpec.ObjType)) then begin
+      HTOT(RepSpec.ObjType,tstr);
+      Header(rw,tstr,1);
+      rw = rw + 1;
+    end;
+
+    HTAccount(RepSpec.AccSpec,tstr);
+    Header(rw,tstr,1);
+    rw = rw + 1;
+    if (RepSpec.IncDaughter!=0) begin
+      tstr = USetStr(3027);
+      Header(rw,tstr,1);
+      rw = rw + 1;
+    end;
+    if (nonblank(RepSpec.CurncyCode)) then begin
+      tstr = USetStr(7672) & ": ";
+      tstr = tstr & RepSpec.CurncyCode;
+      Header(rw,tstr,1);
+      rw = rw + 1;
+    end;
+  end else begin
+    HT2Per(RepSpec.sStartDate,RepSpec.sEndDate,tstr);
+    Header(rw,tstr,1);
+    rw = rw + 1;
+    LstRegDat(tstr);
+    Header(rw,tstr,0);
+    
+    if (nonblank(RepSpec.ObjStr)) then begin
+      HTObj(RepSpec.ObjStr,tstr);
+      Header(rw,tstr,1);
+      rw = rw + 1;
+    end;
+    if (nonblank(RepSpec.ObjType)) then begin
+      HTOT(RepSpec.ObjType,tstr);
+      Header(rw,tstr,1);
+      rw = rw + 1;
+    end;
+    
+    oldAccSpec = RepSpec.AccSpec;
+    //wierd code for geting header correct
+    if (RepSpec.AccSpec==1) then begin
+      RepSpec.AccSpec = 4;
+    end else begin
+      if (RepSpec.AccSpec==4) then begin
+        RepSpec.AccSpec = 1;
+      end;
+    end;
+    HTAccount(RepSpec.AccSpec,tstr);
+    
+    RepSpec.AccSpec = oldAccSpec;    
+    Header(rw,tstr,1);
+    rw = rw + 1;
+    
+    if (RepSpec.IncDaughter!=0) then begin
+      tstr = USetStr(3027);
+      Header(rw,tstr,1);
+      rw = rw + 1;
+    end;
+    if (nonblank(RepSpec.CurncyCode)) then begin
+      tstr = USetStr(7672) & ": ";
+      tstr = tstr & RepSpec.CurncyCode;
+      Header(rw,tstr,1);
+      rw = rw + 1;
+    end;
+  end;
+  RETURN;
+END;
+
+global
+procedure AGrSumLine2Cust(record RcVc RepSpec,Integer c1,string t1,string t2,string extracode,
+                     val Sp1,val Sp2,val Sp3,val Sp4,val Sp5,val Sp6,
+                     Boolean negf,val goms,Boolean PLf,Boolean resUseAccum,string dblstr,LongInt agrid,
+                     Boolean usedf,Boolean printf,Boolean comparef,var array val monthsum,var array val msumtot,var array val s1,var array val s2,var array val s3,var array val s4,var array val s5,var array val s6,var array val s7,var array val s8,var array val s9,var array val s10,var array val s11,var array val s12,boolean sflag)
+BEGIN
+  val cppr;
+  val ss1,ss2,ss3,ss4,ss5,ss6;
+  val os1,os2,os3,os4,os5,os6,sval;
+  string 5 tstr,c;
+  Integer ValForm,i,v,vs,mcnt,k;
+  Boolean prntdf,skipf,accflag;
+  string 255 strval,adstr;
+  record SysFormatBlock SysFormatRec;
+ 
+  BlockLoad(SysFormatRec);
+  if (printf==false) then begin
+    goto LAGrSumLine;
+  end;
+  skipf = true;
+  if (usedf) then begin
+    skipf = false;
+  end;
+  switch (RepSpec.AccSpec) begin
+    case 4:
+//      if (Sp3!=0) then begin
+      if (PLf) then begin
+        if (Sp1!=0) then begin
+          skipf = false;
+        end;
+      end else begin
+        if (Sp2!=0) then begin
+          skipf = false;
+        end;
+      end;
+    case 1:
+// If you comment this line in and next one out, it means all accounts that once had a saldo but no longer has, will be printed. Not so nice.
+// If an account has nothing in start balance, 100 in and 100 out during period (zero) and zero in ending balance, it won't print either
+// But commenting this line in is not the solution to that problem. It has to be tested someplace else.
+//      if ((nonblank(Sp1)) or (nonblank(Sp2)) or (nonblank(Sp3)) or (nonblank(Sp4)) or (nonblank(Sp5)) or (nonblank(Sp6))) then begin
+      if ((Sp1!=0) or (Sp2!=0) or (Sp3!=0) or (Sp4!=0) or (Sp5!=0) or (Sp6!=0)) then begin
+        skipf = false;
+      end;
+    otherwise
+      skipf = false;
+  end;
+  if (skipf) then begin
+    goto LAGrSumLine;
+  end;
+  ValForm = M4Val;
+  ss1 = Sp1;
+  ss2 = Sp2;
+  ss3 = Sp3;
+  ss4 = Sp4;
+  ss5 = Sp5;
+  ss6 = Sp6;
+  if (negf) then begin
+    ss1 = -ss1;
+    ss2 = -ss2;
+    ss3 = -ss3;
+    ss4 = -ss4;
+    ss5 = -ss5;
+    ss6 = -ss6;
+  end;
+  StartFormat(15);
+  if ((RepSpec.repname!="ConsResRn") and (RepSpec.repname!="ConsBalRn")) then begin
+    if (nonblank(dblstr)) then begin
+      if (Left(RepSpec.critname,7)=="ConsRes") then begin
+        if ((Left(dblstr,10)=="DblResCons")) then begin
+          OutStringID(c1,dblstr,t1,false,agrid);
+        end else begin
+          OutStringID(c1,"DblConsResRClass",t1,false,"" & RepSpec.shortname & ":" & agrid);
+        end;
+        prntdf = true;
+      end;
+      if (RepSpec.critname=="ConsBalRClass") then begin
+        OutStringID(c1,"DblConsBalRClass",t1,false,"" & RepSpec.shortname & ":" & agrid);
+        prntdf = true;
+      end;
+    end else begin
+      if (RepSpec.Media!=mtFile) then begin
+        OutString(c1,0,"",false);  
+      end;
+    end;
+    if (prntdf==false) then begin
+      OutStringID(c1,dblstr,t1,false,RepSpec.flags[29]);//29 id company ID    
+    end;
+  end else begin
+    if (nonblank(dblstr)) then begin
+      if (RepSpec.critname=="ConsResRClass") then begin
+        OutString(c1,"DblNLSpec",t1,false);
+        prntdf = true;
+      end;
+      if (RepSpec.critname=="ConsBalRClass") then begin
+        OutString(c1,"DblNLSpec",t1,false);
+        prntdf = true;
+      end;
+    end;
+    if (prntdf==false) then begin
+      OutStringID(c1,dblstr,t1,false,RepSpec.flags[29]);//29 id company ID
+    end;
+  end;
+  if ((nonblank(t2)) or (RepSpec.Media==mtFile)) then begin
+    OutString(2,0,t2,false);
+  end;  
+  prntdf = false;
+  if (PLf==false) then begin
+    os1 = ss1;
+    os2 = ss2;
+    os3 = ss3;
+    os4 = ss4;
+    os5 = ss5;
+    os6 = ss6;
+    if (prntdf==false) then begin
+      OutVal(3,0,ss1,ValForm,true);
+      OutVal(4,0,ss2,ValForm,true);
+    end;
+  end;
+  if (PLf==true) then begin
+    os1 = ss1;
+    os2 = ss2;
+    os3 = ss3;
+    os4 = ss4;
+    os5 = ss5;
+    os6 = ss6;
+    if (RepSpec.Comparison==0) then begin
+      vs=30;
+      v=120;
+      mcnt=GetMonthDiff(RepSpec.sStartDate,RepSpec.sEndDate);
+      if (sflag) then begin
+        for (i=1;i<=mcnt;i=i+1) begin
+          sval=0;
+          switch (i) begin      
+            case 1: 
+              if (negf) then begin
+                sval=-s1[agrid];
+              end else begin
+                sval=s1[agrid];
+              end;
+            case 2: 
+              if (negf) then begin
+                sval=-s2[agrid];
+              end else begin
+                sval=s2[agrid];
+              end;
+            case 3: 
+              if (negf) then begin
+                sval=-s3[agrid];
+              end else begin
+                sval=s3[agrid];
+              end;
+            case 4: 
+              if (negf) then begin
+                sval=-s4[agrid];
+              end else begin
+                sval=s4[agrid];
+              end;
+            case 5: 
+              if (negf) then begin
+                sval=-s5[agrid];
+              end else begin
+                sval=s5[agrid];
+              end;
+            case 6: 
+              if (negf) then begin
+                sval=-s6[agrid];
+              end else begin
+                sval=s6[agrid];
+              end;
+            case 7: 
+              if (negf) then begin
+                sval=-s7[agrid];
+              end else begin
+                sval=s7[agrid];
+              end;
+            case 8: 
+              if (negf) then begin
+                sval=-s8[agrid];
+              end else begin
+                sval=s8[agrid];
+              end;
+            case 9: 
+              if (negf) then begin
+                sval=-s9[agrid];
+              end else begin
+                sval=s9[agrid];
+              end;
+            case 10: 
+              if (negf) then begin
+                sval=-s10[agrid];
+              end else begin
+                sval=s10[agrid];
+              end;
+            case 11: 
+              if (negf) then begin
+                sval=-s11[agrid];
+              end else begin
+                sval=s11[agrid];
+              end;
+            case 12: 
+              if (negf) then begin
+                sval=-s12[agrid];
+              end else begin
+                sval=s12[agrid];
+              end;
+          end;
+          OutVal(v,0,sval,M4val,true);
+          v=v+vs;
+        end;
+      end else begin
+        for (i=1;i<=mcnt;i=i+1) begin
+          if (negf) then begin
+            monthsum[i]=-monthsum[i];
+          end;
+          accflag=true;
+          if blank(t1) then begin
+            accflag=false;
+          end;
+          for (k=0;k<len(t1);k=k+1) begin
+            c=Mid(t1,k,1);
+            if ((c<Chr(48)) or (c>Chr(57))) then begin //not number
+              accflag=false;
+            end;
+          end;
+          if (accflag) then begin
+            strval = ValToString(monthsum[i],M4Val,SysFormatRec.thousSep,SysFormatRec.decimalPt,0);
+            adstr=t1 & "+" & i;          
+            OutStringID(v,"DblNLSpecCust",strval,true,adstr);
+          end else begin
+            OutVal(v,0,monthsum[i],M4val,true);
+          end;
+          v=v+vs;
+        end;
+      end; 
+      OutVal(1,0,ss1,ValForm,true);
+    end;
+  end;
+  EndFormat;
+LAGrSumLine:;  
+  RETURN;
+END;
+
+global
+procedure AGrSumLineCust(record RcVc RepSpec,Integer c1,string t1,string t2,string extracode,
+                    val Sp1,val Sp2,val Sp3,val Sp4,val Sp5,val Sp6,
+                    Boolean negf,val goms,Boolean PLf,Boolean resUseAccum,string dblstr,LongInt agrid,
+                    Boolean usedf,Boolean printf,var array val monthsum,var array val msumtot,var array val s1,var array val s2,var array val s3,var array val s4,var array val s5,var array val s6,var array val s7,var array val s8,var array val s9,var array val s10,var array val s11,var array val s12)
+begin
+  AGrSumLine2Cust(RepSpec,c1,t1,t2,extracode,Sp1,Sp2,Sp3,Sp4,Sp5,Sp6,negf,goms,PLf,resUseAccum,dblstr,agrid,usedf,printf,true,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,false);
+  return;
+end;
+
+global
+procedure SumLine2Cust(record RcVc RepSpec,Boolean PLf,string t1,string t2,string extracode,
+                   var val Sum1p,var val Sum2p,var val Sum3p,var val Sum4p,var val Sum5p,
+                   var val Sum6p,Boolean negf,val goms,Boolean resUseAccum,Date AccumStartDate,Integer DCSide,LongInt agrid,Boolean printf,var array val monthsum,var array val msumtot,var array val s1,var array val s2,var array val s3,var array val s4,var array val s5,var array val s6,var array val s7,var array val s8,var array val s9,var array val s10,var array val s11,var array val s12)
+BEGIN
+  record ObjVc RUr;
+  Boolean Accs,RUOut,usedf;
+  val S3b1,Pb1,Eb1,S4b1,S5b1,S6b1;
+  val S3b2,Pb2,Eb2,S4b2,S5b2,S6b2;
+  val S3b3,Pb3,Eb3,S4b3,S5b3,S6b3;
+  string 255 tstr,nru,objs;
+  record ObjBalVc ObjBalr;
+  Boolean Objbals;
+  Date sdate,edate,sd,ed;
+  integer i,j,mcnt;
+  array val accmsum;
+  
+  S3b2 = Sum1p;
+  Pb2 = Sum2p;
+  Eb2 = Sum3p;
+  S4b2 = Sum4p;
+  S5b2 = Sum5p;
+  S6b2 = Sum6p;
+  RUOut = false;
+  RUr.OTCode = RepSpec.ObjType;
+  RUr.Code = "";
+  Accs = true;
+  while (LoopKey("OTCode",RUr,2,Accs)) begin
+    if (RUr.OTCode!=RepSpec.ObjType) then begin 
+      goto L22SumLine2Cust;
+    end;
+
+    ObjBalr.AccNumber = t1;
+    ObjBalr.Object = RUr.Code;
+    Objbals = GetObjBal(t1,RUr.Code,ObjBalr);
+//cust start
+    sdate=RepSpec.sStartDate;
+    edate=RepSpec.sEndDate;
+    mcnt=GetMonthDiff(sdate,edate);
+    for (i=1;i<=mcnt;i=i+1) begin
+      monthsum[i]=0;
+    end;
+    sd=sdate;
+    ed=sd;
+    ed.day=DaysInMonth(GetYear(ed),GetMonth(ed));
+    mcnt=0;
+    while (ed<=edate) begin
+      mcnt=mcnt+1;
+      RepSpec.sStartDate=sd;
+      RepSpec.sEndDate=ed;
+      usedf = AccRuPerBal(RepSpec,PLf,t1,RUr.Code,S3b1,Pb1,Eb1,S4b1,S5b1,S6b1,0,resUseAccum,AccumStartDate,RepSpec.sStartDate,RepSpec.sEndDate);
+      monthsum[mcnt]=S3b1;
+      accmsum[mcnt]=accmsum[mcnt]+monthsum[mcnt];
+      sd=AddDay(ed,1);
+      ed=sd;
+      ed.day=DaysInMonth(GetYear(ed),GetMonth(ed));
+    end;
+    RepSpec.sStartDate=sdate;
+    RepSpec.sEndDate=edate;
+//cust end
+
+    usedf = AccRuPerBal(RepSpec,PLf,t1,RUr.Code,S3b1,Pb1,Eb1,S4b1,S5b1,S6b1,0,resUseAccum,AccumStartDate,RepSpec.sStartDate,RepSpec.sEndDate);
+    S3b2 = S3b2 - S3b1;
+    S4b2 = S4b2 - S4b1;
+    S5b2 = S5b2 - S5b1;
+    S6b2 = S6b2 - S6b1;
+    Pb2 = Pb2 - Pb1;
+    Eb2 = Eb2 - Eb1;
+    S3b3 = S3b3 + S3b1;
+    S4b3 = S4b3 + S4b1;
+    S5b3 = S5b3 + S5b1;
+    S6b3 = S6b3 + S6b1;
+    Pb3 = Pb3 + Pb1;
+    Eb3 = Eb3 + Eb1;  
+    if ((S3b1==0) or (S4b1==0) or (S5b1==0) or (S6b1==0) or (Pb1==0) or (Eb1==0) or (usedf)) then begin
+      if (RUOut==false) then begin
+        if (printf) then begin
+          StartFormat(15);
+          OutString(0,0,t1,false);
+          OutString(2,0,t2,false);
+          EndFormat;
+          RUOut = true;
+        end;
+      end;
+      nru = RUr.Code;
+      if (nonblank(RepSpec.ObjStr)) then begin
+        nru = nru & ",";
+        nru = nru & RepSpec.ObjStr;
+      end;
+      AGrSumLineCust(RepSpec,6,nru,RUr.Comment,extracode,S3b1,Pb1,Eb1,S4b1,S5b1,S6b1,negf,goms,PLf,resUseAccum,"",agrid,usedf,printf,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12);
+    end;
+LSkipObjectSumLine2Cust:;
+  end;
+L22SumLine2Cust:;
+    if (RUOut) then begin
+      AGrSumLineCust(RepSpec,6,"",USetStr(3142),extracode,S3b3,Pb3,Eb3,S4b3,S5b3,S6b3,negf,goms,PLf,resUseAccum,"DblNL",agrid,usedf,printf,accmsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12);
+    end;
+    Sum1p = S3b3;
+    Sum2p = Pb3;
+    Sum3p = Eb3;
+    Sum4p = S4b3;
+    Sum5p = S5b3;
+    Sum6p = S6b3;
+
+  RETURN;
+END;

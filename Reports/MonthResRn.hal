@@ -1,0 +1,1120 @@
+external inner procedure CorspAccSums(record RcVc,record AccVc,string,var val,var val);
+external inner procedure FindAccSD(Date,var Date,var Boolean);
+external inner procedure FindRepDefHeader(string,string,var string);
+external inner procedure GetUserDefRepDescription(record UserDefRepLinesVc,string,var string);
+external inner procedure GetNotStr(Integer,var string);
+external inner function Boolean GetNextSep(string,var Integer,var string);
+external inner function Boolean GetNextItem(string,var Integer,var string);
+external inner procedure GetNext2Sep(string,var Integer,var string);
+external inner procedure GetNextToken(string,var Integer,var string);
+external inner function Boolean GetNextTokenReturn(string,var Integer,var string);
+external inner procedure GetAccountDescription2(string,string,var string);
+external inner function Boolean AccRuPerBal(record RcVc,Boolean,string,string,var val,var val,var val,var val,var val,var val,
+                                      Integer,Boolean,Date,Date,Date);
+external inner procedure CalcRsTypeSum(vector val,vector val,vector val,
+                        vector val,vector val,vector val,
+                        vector Boolean, 
+                        Array record UserDefRepLinesVc,Integer,LongInt);
+//cust start
+external function LongInt GetMonthDiff(Date,Date);
+external procedure SumLine2Cust(record RcVc,Boolean,string,string,string,var val,var val,var val,var val,var val,
+                            var val,Boolean,val,Boolean,Date,Integer,LongInt,Boolean,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val);
+external procedure AGrSumLine2Cust(record RcVc,Integer,string,string,string,
+                              val,val,val,val,val,val,Boolean,val,Boolean,Boolean,string,LongInt,Boolean,Boolean,Boolean,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val,var array val,boolean);
+external procedure AGrHeaderCust(record RcVc,Boolean,Boolean,Date);
+//cust end
+
+global
+procedure MonthResRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  string 255 tstr;
+  
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"MonthResRClass");  
+  FindRepDefHeader("ResRn","",tstr);
+  RepSpec.f1 = tstr;
+  RepSpec.AccSpec = 1;
+  RepSpec.Comparison=0;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  return;
+end;
+
+procedure CalcSum(string accnr,LongInt idn,string ckey,var array integer idrownr,var integer idcnt,LongInt idnorig)
+begin
+  record UserDefRepLinesVc UserDefRepLinesr;
+  record AccVc Accr;
+  record CYBlock CYb;
+  string 255 nitem,nitem2,accstr;
+  Integer np;
+  boolean sepd;
+  LongInt idn1;
+  string 5 nsep;
+  string 255 NRu;
+  Boolean Accs;
+  
+  BlockLoad(CYb);
+  UserDefRepLinesr.IdKey=idn; 
+  if (ReadFirstKey(ckey,UserDefRepLinesr,1,true)) begin
+    if (UserDefRepLinesr.RsType==kRsTypeAccounts) then begin
+
+      np = 0;
+      GetNext2Sep(UserDefRepLinesr.Desc,np,nsep);
+      while (GetNextTokenReturn(UserDefRepLinesr.Desc,np,nitem)) begin
+        GetNext2Sep(UserDefRepLinesr.Desc,np,nsep);
+        if (nsep==".") then begin
+          GetNextToken(UserDefRepLinesr.Desc,np,NRu);
+          GetNext2Sep(UserDefRepLinesr.Desc,np,nsep);
+        end else begin
+          NRu = "";
+        end;    
+        if (nsep==":") then begin
+          GetNextToken(UserDefRepLinesr.Desc,np,nitem2);
+          GetNext2Sep(UserDefRepLinesr.Desc,np,nsep);
+        end else begin
+          nitem2 = "";
+        end;    
+        Accr.AccNumber = nitem;
+        if (blank(nitem2)) then begin
+          Accs = ReadFirstMain(Accr,1,true);
+          if ((Accs) and (Accr.GroupAcc==0)) then begin
+            if (Accr.AccNumber==accnr) then begin
+              idcnt=idcnt+1;
+              idrownr[idcnt]=idnorig;
+            end;
+          end;
+        end else begin
+          if (nitem<nitem2) then begin
+            ResetLoop(Accr);
+            Accs = true;
+            while (LoopMain(Accr,2,Accs)) begin
+              if (Accs==true) then begin
+                if (Accr.AccNumber>nitem2) then begin Accs = false; end;
+              end;
+              if ((Accs) and (Accr.GroupAcc==0)) then begin
+                if (Accr.AccNumber==accnr) then begin
+                  idcnt=idcnt+1;
+                  idrownr[idcnt]=idnorig;
+                end;
+              end;
+            end;
+          end else begin
+            ResetLoop(Accr);
+            Accr.AccNumber = nitem;
+            Accs = LoopBackKey("AccNumber",Accr,1,true);
+            while (Accs) begin
+              if (Accs==true) then begin
+                if (Accr.AccNumber<nitem2) then begin Accs = false; end;
+              end;  
+              if ((Accs) and (Accr.GroupAcc==0)) then begin
+                if (Accr.AccNumber==accnr) then begin
+                  idcnt=idcnt+1;
+                  idrownr[idcnt]=idnorig;
+                end;
+              end;  
+              Accs = LoopBackKey("AccNumber",Accr,1,true);//Accs = m4_ReadLogicalMain(AccVc,LLoop1--,&Accr);
+            end;
+          end;
+        end;
+      end;
+
+      np = 0;
+      GetNext2Sep(UserDefRepLinesr.Desc2,np,nsep);
+      while (GetNextTokenReturn(UserDefRepLinesr.Desc2,np,nitem)) begin
+        GetNext2Sep(UserDefRepLinesr.Desc2,np,nsep);
+        if (nsep==".") then begin
+          GetNextToken(UserDefRepLinesr.Desc2,np,NRu);
+          GetNext2Sep(UserDefRepLinesr.Desc2,np,nsep);
+        end else begin
+          NRu = "";
+        end;    
+        if (nsep==":") then begin
+          GetNextToken(UserDefRepLinesr.Desc2,np,nitem2);
+          GetNext2Sep(UserDefRepLinesr.Desc2,np,nsep);
+        end else begin
+          nitem2 = "";
+        end;    
+        Accr.AccNumber = nitem;
+        if (blank(nitem2)) then begin
+          Accs = ReadFirstMain(Accr,1,true);
+          if ((Accs) and (Accr.GroupAcc==0)) then begin
+            if (Accr.AccNumber==accnr) then begin
+              idcnt=idcnt+1;
+              idrownr[idcnt]=idnorig;
+            end;
+          end;
+        end else begin
+          if (nitem<nitem2) then begin
+            ResetLoop(Accr);
+            Accs = true;
+            while (LoopMain(Accr,2,Accs)) begin
+              if (Accs==true) then begin
+                if (Accr.AccNumber>nitem2) then begin Accs = false; end;
+              end;
+              if ((Accs) and (Accr.GroupAcc==0)) then begin
+                if (Accr.AccNumber==accnr) then begin
+                  idcnt=idcnt+1;
+                  idrownr[idcnt]=idnorig;
+                end;
+              end;
+            end;
+          end else begin
+            ResetLoop(Accr);
+            Accr.AccNumber = nitem;
+            Accs = LoopBackKey("AccNumber",Accr,1,true);
+            while (Accs) begin
+              if (Accs==true) then begin
+                if (Accr.AccNumber<nitem2) then begin Accs = false; end;
+              end;  
+              if ((Accs) and (Accr.GroupAcc==0)) then begin
+                if (Accr.AccNumber==accnr) then begin
+                  idcnt=idcnt+1;
+                  idrownr[idcnt]=idnorig;
+                end;
+              end;  
+              Accs = LoopBackKey("AccNumber",Accr,1,true);//Accs = m4_ReadLogicalMain(AccVc,LLoop1--,&Accr);
+            end;
+          end;
+        end;
+      end;
+
+     np = 0;
+      GetNext2Sep(UserDefRepLinesr.Desc3,np,nsep);
+      while (GetNextTokenReturn(UserDefRepLinesr.Desc3,np,nitem)) begin
+        GetNext2Sep(UserDefRepLinesr.Desc3,np,nsep);
+        if (nsep==".") then begin
+          GetNextToken(UserDefRepLinesr.Desc3,np,NRu);
+          GetNext2Sep(UserDefRepLinesr.Desc3,np,nsep);
+        end else begin
+          NRu = "";
+        end;    
+        if (nsep==":") then begin
+          GetNextToken(UserDefRepLinesr.Desc3,np,nitem2);
+          GetNext2Sep(UserDefRepLinesr.Desc3,np,nsep);
+        end else begin
+          nitem2 = "";
+        end;    
+        Accr.AccNumber = nitem;
+        if (blank(nitem2)) then begin
+          Accs = ReadFirstMain(Accr,1,true);
+          if ((Accs) and (Accr.GroupAcc==0)) then begin
+            if (Accr.AccNumber==accnr) then begin
+              idcnt=idcnt+1;
+              idrownr[idcnt]=idnorig;
+            end;
+          end;
+        end else begin
+          if (nitem<nitem2) then begin
+            ResetLoop(Accr);
+            Accs = true;
+            while (LoopMain(Accr,2,Accs)) begin
+              if (Accs==true) then begin
+                if (Accr.AccNumber>nitem2) then begin Accs = false; end;
+              end;
+              if ((Accs) and (Accr.GroupAcc==0)) then begin
+                if (Accr.AccNumber==accnr) then begin
+                  idcnt=idcnt+1;
+                  idrownr[idcnt]=idnorig;
+                end;
+              end;
+            end;
+          end else begin
+            ResetLoop(Accr);
+            Accr.AccNumber = nitem;
+            Accs = LoopBackKey("AccNumber",Accr,1,true);
+            while (Accs) begin
+              if (Accs==true) then begin
+                if (Accr.AccNumber<nitem2) then begin Accs = false; end;
+              end;  
+              if ((Accs) and (Accr.GroupAcc==0)) then begin
+                if (Accr.AccNumber==accnr) then begin
+                  idcnt=idcnt+1;
+                  idrownr[idcnt]=idnorig;
+                end;
+              end;  
+              Accs = LoopBackKey("AccNumber",Accr,1,true);//Accs = m4_ReadLogicalMain(AccVc,LLoop1--,&Accr);
+            end;
+          end;
+        end;
+      end;
+    end;
+
+    if (UserDefRepLinesr.RsType==kRsTypeSum) then begin
+
+      accstr=UserDefRepLinesr.Desc;
+      np = 0;
+      sepd = GetNextSep(accstr,np,nsep);
+      while (GetNextItem(accstr,np,nitem)) begin
+        sepd = GetNextSep(accstr,np,nsep);
+        idn1 = FirstInRange(nitem,10);
+        if (idn1>=0) then begin
+          CalcSum(accnr,idn1,ckey,idrownr,idcnt,idnorig);
+        end; 
+      end;
+
+      accstr=UserDefRepLinesr.Desc2;
+      np = 0;
+      sepd = GetNextSep(accstr,np,nsep);
+      while (GetNextItem(accstr,np,nitem)) begin
+        sepd = GetNextSep(accstr,np,nsep);
+        idn1 = FirstInRange(nitem,10);
+        if (idn1>=0) then begin
+          CalcSum(accnr,idn1,ckey,idrownr,idcnt,idnorig);
+        end; 
+      end;
+
+      accstr=UserDefRepLinesr.Desc3;
+      np = 0;
+      sepd = GetNextSep(accstr,np,nsep);
+      while (GetNextItem(accstr,np,nitem)) begin
+        sepd = GetNextSep(accstr,np,nsep);
+        idn1 = FirstInRange(nitem,10);
+        if (idn1>=0) then begin
+          CalcSum(accnr,idn1,ckey,idrownr,idcnt,idnorig);
+        end; 
+      end;
+    end;
+  end;
+  return;
+end; 
+
+global
+procedure CalcTotMonthSum(string accnr,string repname,var array integer idrownr,var integer idcnt)
+begin
+  record UserDefRepLinesVc UserDefRepLinesr;
+  string 255 ckey,nitem,accstr;
+  boolean AGrs,addflag,sepd;
+  Integer np;
+  LongInt idn;  
+  string 5 nsep;
+  
+  ckey = "ShortIDKey:" & repname;
+  UserDefRepLinesr.IdKey = 0; 
+  AGrs = ReadFirstKey(ckey,UserDefRepLinesr,1,false);
+  if (AGrs) then begin
+    UserDefRepLinesr.IdKey = 0; 
+    AGrs = true;
+    while (LoopKey(ckey,UserDefRepLinesr,1,AGrs)) begin
+      if (AGrs) then begin
+        if (UserDefRepLinesr.RsType==kRsTypeSum) then begin
+
+          accstr=UserDefRepLinesr.Desc;
+          np = 0;
+          sepd = GetNextSep(accstr,np,nsep);
+          while (GetNextItem(accstr,np,nitem)) begin
+            sepd = GetNextSep(accstr,np,nsep);
+            idn = FirstInRange(nitem,10);
+            if (idn>=0) then begin
+              CalcSum(accnr,idn,ckey,idrownr,idcnt,UserDefRepLinesr.IdKey);
+            end;
+          end;   
+
+          accstr=UserDefRepLinesr.Desc2;
+          np = 0;
+          sepd = GetNextSep(accstr,np,nsep);
+          while (GetNextItem(accstr,np,nitem)) begin
+            sepd = GetNextSep(accstr,np,nsep);
+            idn = FirstInRange(nitem,10);
+            if (idn>=0) then begin
+              CalcSum(accnr,idn,ckey,idrownr,idcnt,UserDefRepLinesr.IdKey);
+            end;
+          end;   
+
+          accstr=UserDefRepLinesr.Desc3;
+          np = 0;
+          sepd = GetNextSep(accstr,np,nsep);
+          while (GetNextItem(accstr,np,nitem)) begin
+            sepd = GetNextSep(accstr,np,nsep);
+            idn = FirstInRange(nitem,10);
+            if (idn>=0) then begin
+              CalcSum(accnr,idn,ckey,idrownr,idcnt,UserDefRepLinesr.IdKey);
+            end;
+          end;   
+        end;
+      end;
+    end;
+  end;
+  return;
+end; 
+
+procedure ALPB2ResGrCust(record RcVc RepSpec,Boolean PLf,record UserDefRepLinesVc UserDefRepLinesr,record AccVc Accp,string anru,
+                var val S3bp,var val Pbp,var val Ebp,var val S4bp,var val S5bp,var val S6bp,
+                Boolean addflag,val goms,var Boolean headflagp,Boolean resUseAccum,Date AccumStartDate,Boolean printf,var array val monthsum,var array val msumtot,var array val s1,var array val s2,var array val s3,var array val s4,var array val s5,var array val s6,var array val s7,var array val s8,var array val s9,var array val s10,var array val s11,var array val s12,var integer listcnt,var array string acclist)
+BEGIN
+  Boolean negf,usedf,testf;
+  val S3b1,Pb1,Eb1,S4b1,S5b1,S6b1,sval;
+  string 255 nru;
+  record CYBlock CompYear;
+  string 255 tstr,tstr2;
+  Date budsd,buded,sdate,edate,sd,ed;
+  integer i,j,mcnt;
+  integer id;
+  array integer idrownr;
+  integer idcnt;
+ 
+  BlockLoad(CompYear);
+  nru=RepSpec.ObjStr;
+  sdate=RepSpec.sStartDate;
+  edate=RepSpec.sEndDate;
+  mcnt=GetMonthDiff(sdate,edate);
+  for (i=1;i<=mcnt;i=i+1) begin
+    monthsum[i]=0;
+  end;
+  sd=sdate;
+  ed=sd;
+  ed.day=DaysInMonth(GetYear(ed),GetMonth(ed));
+  mcnt=0;
+  testf=false;
+  while (ed<=edate) begin
+    mcnt=mcnt+1;
+    budsd=sd;    
+    buded=ed;    
+    RepSpec.sStartDate=sd;
+    RepSpec.sEndDate=ed;
+    
+    if (blank(UserDefRepLinesr.CorspAcc)) then begin
+      usedf = AccRuPerBal(RepSpec,PLf,Accp.AccNumber,nru,S3b1,Pb1,Eb1,S4b1,S5b1,S6b1,UserDefRepLinesr.DCSide,resUseAccum,AccumStartDate,budsd,buded);
+    end else begin
+      CorspAccSums(RepSpec,Accp,UserDefRepLinesr.CorspAcc,S3b1,S4b1);
+    end;
+    monthsum[mcnt]=S3b1;
+ 
+    if (testf==false) then begin  
+      idcnt=0;
+      for (i=1;i<=listcnt;i=i+1) begin
+        if (acclist[i]==Accp.AccNumber) then begin
+          goto L1;
+        end;
+      end;
+      CalcTotMonthSum(Accp.AccNumber,RepSpec.repname,idrownr,idcnt);
+      listcnt=listcnt+1;
+      acclist[listcnt]=Accp.AccNumber;
+      testf=true;
+    end;
+L1:;
+    if (testf) then begin 
+      if (addflag==false) then begin
+        sval=-monthsum[mcnt];
+      end else begin
+        sval=monthsum[mcnt];
+      end;
+      switch (mcnt) begin      
+        case 1: 
+          for (i=1;i<=idcnt;i=i+1) begin
+            id=idrownr[i];
+            s1[id]=s1[id]+sval;
+          end;
+        case 2: 
+          for (i=1;i<=idcnt;i=i+1) begin
+            id=idrownr[i];
+            s2[id]=s2[id]+sval;
+          end;
+        case 3: 
+          for (i=1;i<=idcnt;i=i+1) begin
+            id=idrownr[i];
+            s3[id]=s3[id]+sval;
+          end;
+        case 4: 
+          for (i=1;i<=idcnt;i=i+1) begin
+            id=idrownr[i];
+            s4[id]=s4[id]+sval;
+          end;
+        case 5: 
+          for (i=1;i<=idcnt;i=i+1) begin
+            id=idrownr[i];
+            s5[id]=s5[id]+sval;
+          end;
+        case 6: 
+          for (i=1;i<=idcnt;i=i+1) begin
+            id=idrownr[i];
+            s6[id]=s6[id]+sval;
+          end;
+        case 7: 
+          for (i=1;i<=idcnt;i=i+1) begin
+            id=idrownr[i];
+            s7[id]=s7[id]+sval;
+          end;
+        case 8: 
+          for (i=1;i<=idcnt;i=i+1) begin
+            id=idrownr[i];
+            s8[id]=s8[id]+sval;
+          end;
+        case 9: 
+          for (i=1;i<=idcnt;i=i+1) begin
+            id=idrownr[i];
+            s9[id]=s9[id]+sval;
+          end;
+        case 10: 
+          for (i=1;i<=idcnt;i=i+1) begin
+            id=idrownr[i];
+            s10[id]=s10[id]+sval;
+          end;
+        case 11: 
+          for (i=1;i<=idcnt;i=i+1) begin
+            id=idrownr[i];
+            s11[id]=s11[id]+sval;
+          end;
+        case 12: 
+          for (i=1;i<=idcnt;i=i+1) begin
+            id=idrownr[i];
+            s12[id]=s12[id]+sval;
+          end;
+      end;
+    end;
+
+    if (addflag==true) then begin
+      msumtot[mcnt]=msumtot[mcnt]+monthsum[mcnt];
+    end else begin
+      msumtot[mcnt]=msumtot[mcnt]-monthsum[mcnt];
+    end;
+    sd=AddDay(ed,1);
+    ed=sd;
+    ed.day=DaysInMonth(GetYear(ed),GetMonth(ed));
+  end;
+  for (i=1;i<=idcnt;i=i+1) begin
+    idrownr[i]=0;
+  end;
+  RepSpec.sStartDate=sdate;
+  RepSpec.sEndDate=edate;
+
+  if (blank(UserDefRepLinesr.CorspAcc)) then begin
+    usedf = AccRuPerBal(RepSpec,PLf,Accp.AccNumber,nru,S3b1,Pb1,Eb1,S4b1,S5b1,S6b1,UserDefRepLinesr.DCSide,resUseAccum,AccumStartDate,budsd,buded);
+  end else begin
+    CorspAccSums(RepSpec,Accp,UserDefRepLinesr.CorspAcc,S3b1,S4b1);
+    switch (UserDefRepLinesr.DCSide) begin
+      case 0:
+        Pb1 = S3b1 - S4b1;
+        Eb1 = S3b1 - S4b1 + Pb1;
+      case 1:
+        Pb1 = S3b1;
+        Eb1 = S3b1 + Pb1;
+      case 2:
+        S3b1 = S4b1;
+        Pb1 = S3b1;
+        Eb1 = S3b1 + Pb1;
+    end;
+  end;
+
+  switch (RepSpec.Comparison) begin
+    case 0:
+      if (UserDefRepLinesr.DCSaldo==1) then begin
+        if (Eb1<0) then begin goto LALPB2ResGrCust; end;//S3b1
+      end;
+      if (UserDefRepLinesr.DCSaldo==2) then begin
+        if (Eb1>0) then begin goto LALPB2ResGrCust; end;//S3b1
+      end;
+      if (Eb1==0) then begin
+        if (UserDefRepLinesr.DCSaldo==1) then begin
+          if (Pb1>0) then begin goto LALPB2ResGrCust; end;
+        end;
+        if (UserDefRepLinesr.DCSaldo==2) then begin
+          if (Pb1<0) then begin goto LALPB2ResGrCust; end;
+        end;
+      end;            
+  end;              
+  GetUserDefRepDescription(UserDefRepLinesr,RepSpec.Language,tstr2);  
+
+  if ((nonblank(tstr2)) and (printf)) then begin// UserDefRepLinesr->Comment
+    if ((((RepSpec.AccSpec==1) or (RepSpec.AccSpec==4)) and ((Pb1!=0) or (S3b1!=0) or (S4b1!=0) or (S5b1!=0) or (S6b1!=0) or(Eb1!=0) or (usedf))) 
+        or (RepSpec.AccSpec==0)) then begin
+      if (headflagp==false) then begin
+        StartFormat(15);
+        OutString(0,0,tstr2,false); 
+        EndFormat;
+        headflagp = true;
+        Gray_Divider(0,1);
+      end;
+      negf = true;
+      if (Accp.AccType==0) then begin
+        if (CompYear.NS0[0]==0) then begin
+          negf = false;
+        end;
+      end;
+      if (Accp.AccType==1) then begin
+        if (CompYear.NS0[1]==0) then begin
+          negf = false;
+        end;
+      end;
+      if (Accp.AccType==2) then begin
+        if (CompYear.NS0[2]==0) then begin
+          negf = false;
+        end;
+      end;
+      if (Accp.AccType==3) then begin
+        if (CompYear.NS0[3]==0) then begin
+          negf = false;
+        end;
+      end;
+      if (Accp.AccType==4) then begin
+        if (CompYear.NS0[4]==0) then begin
+          negf = false;
+        end;
+      end;                    
+      GetAccountDescription2(Accp.AccNumber,RepSpec.Language,tstr);            
+
+      if (blank(RepSpec.ObjType)) then begin 
+        AGrSumLine2Cust(RepSpec,0,Accp.AccNumber,tstr,UserDefRepLinesr.SpecCode,S3b1,Pb1,Eb1,S4b1,S5b1,S6b1,negf,goms,PLf,resUseAccum,"DblNL",UserDefRepLinesr.IdKey,usedf,printf,false,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,false);
+      end else begin      
+        SumLine2Cust(RepSpec,PLf,Accp.AccNumber,tstr,UserDefRepLinesr.SpecCode,S3b1,Pb1,Eb1,S4b1,S5b1,S6b1,negf,goms,resUseAccum,AccumStartDate,UserDefRepLinesr.DCSide,UserDefRepLinesr.IdKey,printf,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12);
+      end;            
+    end;
+  end;
+
+  if (addflag==true) then begin
+    S3bp = S3bp + S3b1;
+    S4bp = S4bp + S4b1;
+    S5bp = S5bp + S5b1;
+    S6bp = S6bp + S6b1;
+    Pbp = Pbp + Pb1;
+    Ebp = Ebp + Eb1;
+  end else begin
+    S3bp = S3bp - S3b1;
+    S4bp = S4bp - S4b1;
+    S5bp = S5bp - S5b1;
+    S6bp = S6bp - S6b1;
+    Pbp = Pbp - Pb1;
+    Ebp = Ebp - Eb1;
+  end;
+LALPB2ResGrCust:;
+  RETURN;
+END;
+
+procedure ALPBEndCust(record RcVc RepSpec,Boolean PLf,string Comment,string extracode,val S3bp,val Pbp,val Ebp,
+                  val S4bp,val S5bp,val S6bp,Boolean negf,val goms,Boolean aheadflag,Boolean resUseAccum,LongInt idkey,Boolean printf,var array val monthsum,var array val msumtot,var array val s1,var array val s2,var array val s3,var array val s4,var array val s5,var array val s6,var array val s7,var array val s8,var array val s9,var array val s10,var array val s11,var array val s12)
+BEGIN
+  string 255 tstr;
+  
+  if ((RepSpec.AccSpec==0) or (RepSpec.AccSpec==1) or (RepSpec.AccSpec==4)) then begin
+    if (aheadflag==true) then begin
+      tstr = USetStr(3143) & Comment;
+      if (nonblank(Comment)) then begin
+        Gray_Divider(0,1);
+        AGrSumLine2Cust(RepSpec,0,tstr,"",extracode,S3bp,Pbp,Ebp,S4bp,S5bp,S6bp,negf,goms,PLf,resUseAccum,"",idkey,false,printf,false,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,false);
+        StartFormat(15);
+        EndFormat;
+      end;
+    end;
+  end;
+  if (RepSpec.AccSpec==2) then begin
+    if (nonblank(Comment)) then begin
+      AGrSumLine2Cust(RepSpec,0,Comment,"",extracode,S3bp,Pbp,Ebp,S4bp,S5bp,S6bp,negf,goms,PLf,resUseAccum,"",idkey,false,printf,false,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,false);
+    end;
+  end;
+  if (RepSpec.AccSpec==3) then begin
+    if ((S3bp!=0) or (S4bp!=0) or (S5bp!=0) or (S6bp!=0) or (Pbp!=0)) then begin
+      if (nonblank(Comment)) then begin
+        AGrSumLine2Cust(RepSpec,0,Comment,"",extracode,S3bp,Pbp,Ebp,S4bp,S5bp,S6bp,negf,goms,PLf,resUseAccum,"",idkey,false,printf,false,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,false);
+      end;
+    end;
+  end;
+  RETURN;
+END;
+
+global
+procedure AccListPerBalResGrCust(record RcVc RepSpec,Boolean PLf,record UserDefRepLinesVc UserDefRepLinesr,var val S3bp,var val Pbp,
+                        var val Ebp,var val S4bp,var val S5bp,var val S6bp,Boolean negf,val goms,Boolean resUseAccum,
+                        Date AccumStartDate,Boolean printf,var array val monthsum,var array val msumtot,var array val s1,var array val s2,var array val s3,var array val s4,var array val s5,var array val s6,var array val s7,var array val s8,var array val s9,var array val s10,var array val s11,var array val s12,var integer listcnt,var array string acclist)
+BEGIN
+  record AccVc Accr;
+  Boolean addflag;
+  string 255 Nitem;
+  string 255 Nitem2;
+  string 255 NRu;
+  string 5 nsep;
+  Boolean Accs;
+  Integer np,mcnt,i;
+  Boolean headflag;
+  string 255 tstr;
+
+  S3bp = 0;
+  S4bp = 0;
+  S5bp = 0;
+  S6bp = 0;
+  Pbp = 0;
+  Ebp = 0;
+  headflag = false;
+  np = 0;
+  GetNext2Sep(UserDefRepLinesr.Desc,np,nsep);
+  while (GetNextTokenReturn(UserDefRepLinesr.Desc,np,Nitem)) begin
+    if (nsep=="-") then begin
+      addflag = false; 
+    end else begin
+      addflag = true;
+    end;
+    GetNext2Sep(UserDefRepLinesr.Desc,np,nsep);
+    if (nsep==".") then begin
+      GetNextToken(UserDefRepLinesr.Desc,np,NRu);
+      GetNext2Sep(UserDefRepLinesr.Desc,np,nsep);
+    end else begin
+      NRu = "";
+    end;    
+    if (nsep==":") then begin
+      GetNextToken(UserDefRepLinesr.Desc,np,Nitem2);
+      GetNext2Sep(UserDefRepLinesr.Desc,np,nsep);
+    end else begin
+      Nitem2 = "";
+    end;    
+    Accr.AccNumber = Nitem;
+    if (blank(Nitem2)) then begin
+      Accs = ReadFirstMain(Accr,1,true);
+      if ((Accs) and (Accr.GroupAcc==0)) then begin
+        ALPB2ResGrCust(RepSpec,PLf,UserDefRepLinesr,Accr,NRu,S3bp,Pbp,Ebp,S4bp,S5bp,S6bp,addflag,goms,headflag,resUseAccum,AccumStartDate,printf,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,listcnt,acclist);
+      end;
+    end else begin
+      if (Nitem<Nitem2) then begin
+        ResetLoop(Accr);
+        Accs = true;
+        while (LoopMain(Accr,1,Accs)) begin
+          if (Accs==true) then begin
+            if (Accr.AccNumber>Nitem2) then begin Accs = false; end;
+          end;
+          if ((Accs) and (Accr.GroupAcc==0)) then begin
+            ALPB2ResGrCust(RepSpec,PLf,UserDefRepLinesr,Accr,NRu,S3bp,Pbp,Ebp,S4bp,S5bp,S6bp,addflag,goms,headflag,resUseAccum,AccumStartDate,printf,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,listcnt,acclist);
+          end;
+        end;
+      end else begin
+        ResetLoop(Accr);
+        Accr.AccNumber = Nitem;
+        Accs = LoopBackKey("AccNumber",Accr,1,true);
+        while (Accs) begin
+          if (Accs==true) then begin
+            if (Accr.AccNumber<Nitem2) then begin Accs = false; end;
+          end;  
+          if ((Accs) and (Accr.GroupAcc==0)) then begin
+            ALPB2ResGrCust(RepSpec,PLf,UserDefRepLinesr,Accr,NRu,S3bp,Pbp,Ebp,S4bp,S5bp,S6bp,addflag,goms,headflag,resUseAccum,AccumStartDate,printf,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,listcnt,acclist);
+          end;  
+          Accs = LoopBackKey("AccNumber",Accr,1,true);//Accs = m4_ReadLogicalMain(AccVc,LLoop1--,&Accr);
+        end;
+      end;
+    end;
+  end;
+  np = 0;
+  GetNext2Sep(UserDefRepLinesr.Desc2,np,nsep);
+  while (GetNextTokenReturn(UserDefRepLinesr.Desc2,np,Nitem)) begin
+    if (nsep=="-") then begin
+      addflag = false; 
+    end else begin
+      addflag = true;
+    end;  
+    GetNext2Sep(UserDefRepLinesr.Desc2,np,nsep);
+    if (nsep==".") then begin
+      GetNextToken(UserDefRepLinesr.Desc2,np,NRu);
+      GetNext2Sep(UserDefRepLinesr.Desc2,np,nsep);
+    end else begin
+      NRu = "";
+    end;    
+    if (nsep==":") then begin
+      GetNextToken(UserDefRepLinesr.Desc2,np,Nitem2);
+      GetNext2Sep(UserDefRepLinesr.Desc2,np,nsep);
+    end else begin
+      Nitem2 = "";
+    end;    
+    Accr.AccNumber = Nitem;
+    if (blank(Nitem2)) then begin
+      Accs = ReadFirstMain(Accr,1,true);
+      if ((Accs) and  (Accr.GroupAcc==0)) then begin
+        ALPB2ResGrCust(RepSpec,PLf,UserDefRepLinesr,Accr,NRu,S3bp,Pbp,Ebp,S4bp,S5bp,S6bp,addflag,goms,headflag,resUseAccum,AccumStartDate,printf,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,listcnt,acclist);
+      end;    
+    end else begin
+      if (Nitem<Nitem2) then begin
+        ResetLoop(Accr);
+        Accs = true;
+        while (LoopMain(Accr,2,Accs)) begin
+          if (Accs==true) then begin
+            if (Accr.AccNumber>Nitem2) then begin Accs = false; end;
+          end;  
+          if ((Accs) and  (Accr.GroupAcc==0)) then begin
+            ALPB2ResGrCust(RepSpec,PLf,UserDefRepLinesr,Accr,NRu,S3bp,Pbp,Ebp,S4bp,S5bp,S6bp,addflag,goms,headflag,resUseAccum,AccumStartDate,printf,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,listcnt,acclist);
+          end;
+        end;
+      end else begin
+        ResetLoop(Accr);
+        Accr.AccNumber = Nitem;
+        Accs = LoopBackKey("AccNumber",Accr,1,true);
+        while (Accs) begin
+          if (Accs==true) then begin
+            if (Accr.AccNumber<Nitem2) then begin Accs = false; end;
+          end;  
+          if ((Accs) and  (Accr.GroupAcc==0)) then begin
+            ALPB2ResGrCust(RepSpec,PLf,UserDefRepLinesr,Accr,NRu,S3bp,Pbp,Ebp,S4bp,S5bp,S6bp,addflag,goms,headflag,resUseAccum,AccumStartDate,printf,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,listcnt,acclist);
+          end;  
+          Accs = LoopBackKey("AccNumber",Accr,1,true);//Accs = m4_ReadLogicalMain(AccVc,LLoop1--,&Accr);
+        end;
+      end;
+    end;
+  end;
+  np = 0;
+  GetNext2Sep(UserDefRepLinesr.Desc3,np,nsep);
+  while (GetNextTokenReturn(UserDefRepLinesr.Desc3,np,Nitem)) begin
+    if (nsep=="-") then begin
+      addflag = false; 
+    end else begin
+      addflag = true;
+    end;  
+    GetNext2Sep(UserDefRepLinesr.Desc3,np,nsep);
+    if (nsep==".") then begin
+      GetNextToken(UserDefRepLinesr.Desc3,np,NRu);
+      GetNext2Sep(UserDefRepLinesr.Desc3,np,nsep);
+    end else begin
+      NRu = "";
+    end;    
+    if (nsep==":") then begin
+      GetNextToken(UserDefRepLinesr.Desc3,np,Nitem2);
+      GetNext2Sep(UserDefRepLinesr.Desc3,np,nsep);
+    end else begin
+      Nitem2 = "";
+    end;    
+    Accr.AccNumber = Nitem;
+    if (blank(Nitem2)) then begin
+      Accs = ReadFirstMain(Accr,1,true);
+      if ((Accs) and  (Accr.GroupAcc==0)) then begin
+        ALPB2ResGrCust(RepSpec,PLf,UserDefRepLinesr,Accr,NRu,S3bp,Pbp,Ebp,S4bp,S5bp,S6bp,addflag,goms,headflag,resUseAccum,AccumStartDate,printf,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,listcnt,acclist);
+      end;
+    end else begin
+      if (Nitem<Nitem2) then begin
+        ResetLoop(Accr);
+        Accs = true;
+        while (LoopMain(Accr,2,Accs)) begin
+          if (Accs==true) then begin
+            if (Accr.AccNumber>Nitem2) then begin Accs = false; end;
+          end;  
+          if ((Accs) and  (Accr.GroupAcc==0)) then begin
+            ALPB2ResGrCust(RepSpec,PLf,UserDefRepLinesr,Accr,NRu,S3bp,Pbp,Ebp,S4bp,S5bp,S6bp,addflag,goms,headflag,resUseAccum,AccumStartDate,printf,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,listcnt,acclist);
+          end;  
+        end;
+      end else begin
+        ResetLoop(Accr);
+        Accr.AccNumber = Nitem;
+        Accs = LoopBackKey("AccNumber",Accr,1,true);
+        while (Accs) begin
+          if (Accs==true) then begin
+            if (Accr.AccNumber<Nitem2) then begin
+              Accs = false;
+            end;  
+          end;  
+          if ((Accs) and  (Accr.GroupAcc==0)) then begin
+            ALPB2ResGrCust(RepSpec,PLf,UserDefRepLinesr,Accr,NRu,S3bp,Pbp,Ebp,S4bp,S5bp,S6bp,addflag,goms,headflag,resUseAccum,AccumStartDate,printf,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,listcnt,acclist);
+          end;
+          Accs = LoopBackKey("AccNumber",Accr,1,true);
+        end;
+      end;
+    end;
+  end;
+  GetUserDefRepDescription(UserDefRepLinesr,RepSpec.Language,tstr);
+
+  ALPBEndCust(RepSpec,PLf,tstr,UserDefRepLinesr.SpecCode,S3bp,Pbp,Ebp,S4bp,S5bp,S6bp,negf,goms,headflag,resUseAccum,UserDefRepLinesr.IdKey,printf,msumtot,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12);// UserDefRepLinesr.Comment
+  mcnt=GetMonthDiff(RepSpec.sStartDate,RepSpec.sEndDate);
+  for (i=1;i<=mcnt;i=i+1) begin
+    msumtot[i]=0;
+  end;
+
+  RETURN;
+END;
+
+global
+procedure ResRnCalcRsTypeAccountsCust(record RcVc RepSpec,string shortname,Boolean PLf,Boolean negf,val Goms,Boolean resUseAccum,date AccumStartDate,
+                        vector val S3ba,vector val Pba,vector val Eba,
+                        vector val S4ba,vector val S5ba,vector val S6ba,
+                        vector Boolean sumsv,
+                        Array record UserDefRepLinesVc aUserDefRepLinesr,var Integer udrlcnt,var array val monthsum,var array val msumtot,var array val s1,var array val s2,var array val s3,var array val s4,var array val s5,var array val s6,var array val s7,var array val s8,var array val s9,var array val s10,var array val s11,var array val s12,var integer listcnt,var array string acclist)
+begin
+  record UserDefRepLinesVc UserDefRepLinesr;
+  Boolean AGrs;
+  string 255 ckey;
+  val tmpS3ba,tmpS4ba,tmpS5ba,tmpS6ba,tmpPba,tmpEba;
+  integer i, mcnt;
+  
+  ckey = "ShortIDKey:" & shortname;
+  UserDefRepLinesr.IdKey = 0; 
+  AGrs = ReadFirstKey(ckey,UserDefRepLinesr,1,false);
+  if (AGrs==false) then begin
+    StartFormat(20);
+    OutString(0,0,USetStr(3167),false);
+    EndFormat;
+  end;
+  UserDefRepLinesr.IdKey = 0; 
+  AGrs = true;
+  while (LoopKey(ckey,UserDefRepLinesr,1,AGrs)) begin
+    if (AGrs) then begin
+      switch (UserDefRepLinesr.RsType) begin
+        case kRsTypeAccounts:
+          AccListPerBalResGrCust(RepSpec,PLf,UserDefRepLinesr,tmpS3ba,tmpPba,tmpEba,tmpS4ba,tmpS5ba,tmpS6ba,negf,Goms,resUseAccum,AccumStartDate,false,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,listcnt,acclist);
+          S3ba[UserDefRepLinesr.IdKey] = tmpS3ba;
+          S4ba[UserDefRepLinesr.IdKey] = tmpS4ba;
+          S5ba[UserDefRepLinesr.IdKey] = tmpS5ba;
+          S6ba[UserDefRepLinesr.IdKey] = tmpS6ba;
+          Pba[UserDefRepLinesr.IdKey] = tmpPba;
+          Eba[UserDefRepLinesr.IdKey] = tmpEba; 
+          sumsv[UserDefRepLinesr.IdKey] = true;       
+        case kRsTypeSum:
+          sumsv[UserDefRepLinesr.IdKey] = false;       
+        case kRsTypeText:
+          sumsv[UserDefRepLinesr.IdKey] = true;       
+        case kRsTypePageBreak:
+          sumsv[UserDefRepLinesr.IdKey] = true;       
+      end;
+      aUserDefRepLinesr[udrlcnt] = UserDefRepLinesr;
+      udrlcnt = udrlcnt + 1;
+    end;
+  end;
+  
+  return;
+end;
+
+global
+procedure MonthResRn(record RcVc RepSpec)
+BEGIN
+  record UserDefRepVc UserDefRepr;
+  record UserDefRepLinesVc UserDefRepLinesr;
+  record CYBlock CYb;
+  Boolean PLf,headerf,resUseAccum;
+  record ConsolidationBlock cr;
+  string 255 tstr,notstr,per1,per2;
+  val Goms;
+  Date AccumStartDate;
+  val tmpS3ba,tmpS4ba,tmpS5ba,tmpS6ba,tmpPba,tmpEba;
+  vector val S3ba;
+  vector val S4ba;
+  vector val S5ba;
+  vector val S6ba;
+  vector val Pba;
+  vector val Eba;  
+  vector Boolean sumsv;
+  Array record UserDefRepLinesVc aUserDefRepLinesr;
+  Integer udrli,udrlcnt;
+  Boolean negf,AGrs;
+  Integer aid,nr;
+  Integer aidn,maxrsums;
+  Array Integer Sym_hash;
+  string 60 ckey,KeyDefinifion;
+  transaction record RcVc KeyRepSpec;
+  record RcVc tmpKeyRepSpec;
+  record RcVc newRepSpec;
+  array val monthsum,msumtot;
+  array val s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12;
+  integer mcnt,i,v,vs;
+  date tmpdate,tmpdate1;
+  integer listcnt;
+  array string 20 acclist;
+  
+  RepSpec.repname="ResRn";
+  PLf = true;
+  headerf = true;
+  if (RepSpec.CalledFromHAL==0) then begin
+    if (((RepSpec.AccSpec==2) or (RepSpec.AccSpec==3)) and (nonblank(RepSpec.ObjType))) then begin
+      MessageBox(1072,"");
+      goto LResRn;
+    end;
+  end;
+  tmpdate=RepSpec.sStartDate;
+  tmpdate.day=01;
+  tmpdate1=RepSpec.sEndDate;
+  tmpdate1.day=DaysInMonth(GetYear(tmpdate1),GetMonth(tmpdate1));
+  if (RepSpec.sStartDate!=tmpdate) or (RepSpec.sEndDate!=tmpdate1) then begin
+    MessageBox(32894,"");
+      goto LResRn;
+  end;
+  mcnt=GetMonthDiff(RepSpec.sStartDate,RepSpec.sEndDate);
+  if (mcnt>12) then begin
+    MessageBox(1023420,"");
+      goto LResRn;
+  end;
+  
+  listcnt=0;
+  BlockLoad(CYb);
+  if (blank(RepSpec.shortname)) then begin
+    UserDefRepr.shortname = RepSpec.repname;
+  end else begin
+    UserDefRepr.shortname = RepSpec.shortname;
+  end;
+  if (ReadFirstMain(UserDefRepr,1,true)==false) then begin
+    UserDefRepr.shortname = RepSpec.repname;
+    if (ReadFirstMain(UserDefRepr,1,true)==false) then begin
+      MessageBox(3167,"");
+      goto LResRn;
+    end;
+  end;
+
+  if (RepSpec.critname=="ConsResRClass") then begin    
+    BlockLoad(cr);
+    RepSpec.basecurncy = cr.ConsCrncy;  
+  end;
+  resUseAccum = false;
+  if ((PLf==true) and (RepSpec.Comparison==0)) then begin
+    FindAccSD(RepSpec.sStartDate,AccumStartDate,resUseAccum);
+  end;  
+
+  if (RepSpec.CalledFromHAL==0) then begin
+    FindRepDefHeader(RepSpec.repname,RepSpec.shortname,tstr);
+    if (nonblank(RepSpec.f1)) then begin
+      tstr = RepSpec.f1;
+    end;  
+
+    if (headerf) then begin
+      StartReportJob(tstr);
+      AGrHeaderCust(RepSpec,PLf,resUseAccum,AccumStartDate);
+      EndHeader;
+    end else begin
+      StartReportNoHeaderJob(tstr);
+    end;
+    SetRepCol(2,50);
+      if (RepSpec.Comparison==0) then begin
+        SetRepCol(3,288);
+      end;
+    SetRepCol(6,15);
+  end;
+  aidn = -1; 
+  Goms = 1.00;
+  if (RepSpec.CalledFromHAL==0) then begin
+    GetNotStr(0,notstr);
+    StartFormat(20);
+    tstr = "";
+    if (RepSpec.Media==mtFile) or (RepSpec.Media==mtExcel) then begin
+      OutString(11,0,tstr,true); // To make export to file look better 
+      OutString(20,0,tstr,true);
+    end;
+    vs=30;
+    v=120;
+    tmpdate1=tmpdate;
+    for (i=1;i<=mcnt;i=i+1) begin
+      switch (GetMonth(tmpdate1)) begin      
+        case 1: 
+          tstr=USetStr(1023408);
+        case 2: 
+          tstr=USetStr(1023409);
+        case 3: 
+          tstr=USetStr(1023410);
+        case 4: 
+          tstr=USetStr(1023411);
+        case 5: 
+          tstr=USetStr(1023412);
+        case 6: 
+          tstr=USetStr(1023413);
+        case 7: 
+          tstr=USetStr(1023414);
+        case 8: 
+          tstr=USetStr(1023415);
+        case 9: 
+          tstr=USetStr(1023416);
+        case 10: 
+          tstr=USetStr(1023417);
+        case 11: 
+          tstr=USetStr(1023418);
+        case 12: 
+          tstr=USetStr(1023419);
+      end;
+      OutStringAdjust(v,0,tstr,true,M4Val);
+      v=v+vs;
+      tmpdate1=AddMonth(tmpdate,i);
+    end;
+    tstr = USetStr(3156);
+    OutStringAdjust(1,0,tstr,true,M4Val);
+    EndFormat;
+end;
+  if ((nonblank(RepSpec.ObjType)) and (RepSpec.AccSpec==2)) then begin
+    StartFormat(20);
+    OutString(0,0,USetStr(1565),false);
+    EndFormat;
+    goto L88LResRn;
+  end;
+  
+  ckey = "ShortIDKey:" & UserDefRepr.shortname;
+  UserDefRepLinesr.IdKey = 0; 
+  AGrs = ReadFirstKey(ckey,UserDefRepLinesr,1,false);
+  if (AGrs==false) then begin
+    StartFormat(20);
+    OutString(0,0,USetStr(3167),false);
+    EndFormat;
+  end;
+//calculate  
+  ResRnCalcRsTypeAccountsCust(RepSpec,UserDefRepr.shortname,PLf,negf,Goms,resUseAccum,AccumStartDate,
+    S3ba,Pba,Eba,S4ba,S5ba,S6ba,sumsv,aUserDefRepLinesr,udrlcnt,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,listcnt,acclist);
+
+//sums
+  CalcRsTypeSum(S3ba,Pba,Eba,S4ba,S5ba,S6ba,sumsv,aUserDefRepLinesr,udrlcnt,-1);
+
+//print
+  for (udrli=0;udrli<udrlcnt;udrli=udrli+1) begin
+    UserDefRepLinesr = aUserDefRepLinesr[udrli]; 
+    switch (UserDefRepLinesr.RsType) begin
+      case kRsTypeAccounts:
+        negf = true;
+        if (UserDefRepLinesr.AccType==kAccTypeAsset) then begin
+          if (CYb.NS0[0]==0) then begin
+            negf = false;
+          end;
+        end;
+        if (UserDefRepLinesr.AccType==kAccTypeLiability) then begin
+          if (CYb.NS0[1]==0) then begin
+            negf = false;
+          end;
+        end;
+        if (UserDefRepLinesr.AccType==kAccTypeEquity) then begin
+          if (CYb.NS0[2]==0) then begin
+            negf = false;
+          end;
+        end;
+        if (UserDefRepLinesr.AccType==kAccTypeIncome) then begin
+          if (CYb.NS0[3]==0) then begin
+            negf = false;
+          end;
+        end;
+        if (UserDefRepLinesr.AccType==kAccTypeExpense) then begin
+          if (CYb.NS0[4]==0) then begin
+            negf = false;
+          end;
+        end;              
+        AccListPerBalResGrCust(RepSpec,PLf,UserDefRepLinesr,tmpS3ba,tmpPba,tmpEba,tmpS4ba,tmpS5ba,tmpS6ba,negf,Goms,resUseAccum,AccumStartDate,true,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,listcnt,acclist);
+      case kRsTypeSum:
+        negf = false;
+        if (UserDefRepLinesr.AccType==kAccTypeAsset) then begin
+          if (CYb.NS0[0]!=0) then begin
+            negf = true;
+          end;
+        end;
+        if (UserDefRepLinesr.AccType==kAccTypeLiability) then begin
+          if (CYb.NS0[1]!=0) then begin
+            negf = true;
+          end;
+        end;
+        if (UserDefRepLinesr.AccType==kAccTypeEquity) then begin
+          if (CYb.NS0[2]!=0) then begin
+            negf = true;
+          end;
+        end;
+        if (UserDefRepLinesr.AccType==kAccTypeIncome) then begin
+          if (CYb.NS0[3]!=0) then begin
+            negf = true;
+          end;
+        end;
+        if (UserDefRepLinesr.AccType==kAccTypeExpense) then begin
+          if (CYb.NS0[4]!=0) then begin
+            negf = true;
+          end;
+        end;                        
+        if (nonblank(UserDefRepLinesr.Comment)) then begin
+          GetUserDefRepDescription(UserDefRepLinesr,RepSpec.Language,tstr);        
+          AGrSumLine2Cust(RepSpec,0,tstr,"",UserDefRepLinesr.SpecCode,S3ba[UserDefRepLinesr.IdKey],Pba[UserDefRepLinesr.IdKey],Eba[UserDefRepLinesr.IdKey],
+                     S4ba[UserDefRepLinesr.IdKey],S5ba[UserDefRepLinesr.IdKey],S6ba[UserDefRepLinesr.IdKey],negf,Goms,PLf,resUseAccum,"",UserDefRepLinesr.IdKey,false,true,false,monthsum,msumtot,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,true);
+       end;
+      case kRsTypeText:
+        GetUserDefRepDescription(UserDefRepLinesr,RepSpec.Language,tstr);        
+        StartFormat(15);
+        OutString(0,0,tstr,false);// UserDefRepLinesr.Comment
+        EndFormat;
+      case kRsTypePageBreak:
+        if (RepSpec.Media!=mtScreen) then begin
+          NewPage(false);
+        end;  
+    end;
+  end;
+
+L88LResRn:;
+  if (RepSpec.CalledFromHAL==0) then begin
+    EndJob;
+  end;  
+LResRn:;  
+  RETURN;
+END;

@@ -1,0 +1,1393 @@
+external function Boolean CheckInternetEnabler();
+external updating procedure SaveERecordStatus(string,string,string,string,Integer,string,string,string,LongInt,Integer,string,string);
+external function string 100 CreateCompID();
+external function LongInt DateDiff(Date,Date);
+external procedure GetItemVATCode(string,Integer,var string,Boolean);
+external procedure GetINCostAcc(record INVc,var string);
+external function Boolean ReadFirstItem(string,var record INVc,Boolean,Boolean);
+external procedure ExtractObj(string,var Integer,var string);
+//hal/exports
+external procedure eInvoiceExportXMLHeader(var area,var area,Integer,Boolean);
+external function Boolean eInvoiceExportXML2(record IVVc,var area,var area,Integer,Integer,Boolean,Boolean,LongInt,Boolean);
+//xml tools
+external procedure EstEInvBuildString2(string,string,var string);
+external procedure EstEInvBuildString(string,string,integer,var string);
+external procedure EstEInvTagValue(string,string,integer,area); 
+external procedure EstEInvStartTag2(string,var string,area);
+external procedure EstEInvStartTag(string,area);
+external procedure EstEInvEndTag(string,area);
+external procedure GetTagContents(string ,var area);
+external procedure LogAreaToFile(string,area);
+external function val XmlGetVal(var xml,string,Integer,string,string);
+external function date XmlGetDate(var xml,string,string);
+//txt tools
+external procedure CheckEstEInvoicingUsage(string,string);
+external procedure LookupForEstCustServices();
+external procedure GetAreaFromFile(Area,string);
+external procedure ExtractObjWithSeparator(string,string,Boolean,var Integer,var string);
+//cust +
+external function Boolean DoSendRequestToPartner(area,var xml,string,string,string,string,boolean); 
+
+function boolean DoEstEInvoiceExportXML(record IVVc IVr,var area stack,var area attach,record EInvoiceBlock EIb,LongInt version)
+begin
+  Boolean res,attachpdf,einvcuf,shortnotef;
+  record CUVc CUr;
+  Integer RcvInvoicePref,RcvInvoicePref2;
+  
+  RcvInvoicePref = 0; RcvInvoicePref2 = 0;
+  attachpdf = EIb.AttachPDFtoElectronicInvoice;
+  CUr.Code = IVr.CustCode;
+  einvcuf = ReadFirstMain(CUr,1,true);
+  if (einvcuf) then begin
+    if (CUr.eInvRcvPref != 0) then begin
+      attachpdf = CUr.eInvAttachPDF;
+      RcvInvoicePref = CUr.eInvRcvPref;
+      RcvInvoicePref2 = CUr.eInvAltRcvPref;
+      shortnotef = CUr.eInvShortNote;
+    end;
+  end;
+  if (RcvInvoicePref==0) then begin
+    RcvInvoicePref = EIb.RcvInvoicePref;
+  end;
+  res = eInvoiceExportXML2(IVr,stack,attach,RcvInvoicePref,RcvInvoicePref2,attachpdf,shortnotef,version,EIb.NoLineswoItemonEInv==1);
+  DoEstEInvoiceExportXML = res;
+  return;
+end;
+  
+function Boolean PrepareEstEInvoiceForSending(record EInvoiceQueVc EInvoiceQuer,var area stack,var area attach,record EInvoiceBlock EIb)
+begin
+  Boolean res;
+  record IVVc IVr;
+  
+  switch (EInvoiceQuer.FileName) begin
+    case "estIVVc": 
+      IVr.SerNr = EInvoiceQuer.RecSerNr;
+      if (ReadFirstMain(IVr,1,true)) then begin
+        res = DoEstEInvoiceExportXML(IVr,stack,attach,EIb,EInvoiceQuer.RecVersionNr);
+      end;
+  end;
+  PrepareEstEInvoiceForSending = res;
+  return;
+end;
+
+function boolean SendInvoiceToEArvekeskus(var area invoices,var area attachments,string service,var xml reply,record EInvoiceBlock EIb,boolean checkflag)
+begin
+  string 5 status;
+  string 100 param;
+  Boolean res;
+
+  status = -1;
+  res = false;
+  eInvoiceExportXMLHeader(invoices,attachments,EIb.TestFlag,false);
+  DoSendRequestToPartner(invoices,reply,service,"EInvoice",param,EIb.PrivateKey,checkflag);
+  status = XmlGet(reply,"SOAP-ENV:Envelope/SOAP-ENV:Body/erp:EInvoiceResponse/ErrorCode");
+  if(status=="0") then begin
+    res = true;
+  end else begin
+//    LogText(0,"SendInvoiceToEArvekeskus: no answer");
+  end;
+  SetAreaZeroSize(invoices);
+  SendInvoiceToEArvekeskus = res;
+  return;
+end;
+
+procedure FindFirstDateOfERecords(string FileName,var date SendDate,var time SendTime)
+begin
+  record ERecordStatusVc ERecordStatusr;
+  
+  if (ReadFirstMain(ERecordStatusr,1,true)) then begin
+    SendDate = ERecordStatusr.CreationDate;
+    SendTime = ERecordStatusr.CreationTime;
+  end;
+  return;
+end;
+
+procedure SendInvoiceStatusRequest(record EInvoiceBlock EIb,string service,boolean checkflag,var xml reply,string status)
+begin
+  area a;
+  string 100 param;
+  date SendDate;
+  time SendTime;
+
+  SendDate = EIb.LastOutEstEInvStatusDate;
+  SendTime = EIb.LastOutEstEInvStatusTime;
+  if (blankdate(SendDate)) then begin
+    FindFirstDateOfERecords("estIVVc",SendDate,SendTime);
+  end;
+  if (blank(SendTime)) then begin
+    SendTime = CurrentTime;
+  end;
+  SetAreaZeroSize(a);
+  EstEInvTagValue("erp:state",status,10,a);
+  EstEInvBuildString2("since",datetostring(SendDate,"DD-MM-YYYY") & " " & SendTime,param);  
+  DoSendRequestToPartner(a,reply,service,"SaleInvoiceExport",param,EIb.PrivateKey,checkflag);
+  return;
+end;
+
+procedure DoReceiveEstEInvoiceStatus(record EInvoiceBlock EIb,string service,boolean checkflag,var xml reply,string status)
+begin
+  SendInvoiceStatusRequest(EIb,service,checkflag,reply,status);
+  return;
+end;
+
+global
+updating procedure ChangeERecordStatus(string FileName,LongInt RecSerNr,Integer status,string comment,string CustomerCode)
+BEGIN
+  record ERecordStatusVc ERecordStatusr,oldERecordStatusr;
+  record CYBlock CYb;
+  string 100 CompID;
+  
+  ERecordStatusr.FileName = FileName;
+  ERecordStatusr.CustID = CustomerCode;
+  ERecordStatusr.CustSerNr = RecSerNr;
+  ERecordStatusr.CompNr = CurrentCompany;
+  if (ReadLastKey("FileName",ERecordStatusr,4,true)) then begin
+    RecordCopy(oldERecordStatusr,ERecordStatusr);
+    ERecordStatusr.Status = status;
+    ERecordStatusr.Comment = comment;
+    if (RecordUpdate(oldERecordStatusr,ERecordStatusr,false)) then begin end;    
+  end else begin
+    BlockLoad(CYb);
+    CompID = CreateCompID;
+    SaveERecordStatus(FileName,RecSerNr,CustomerCode,USetStr(1150),status,CompID,comment,"EARVEKESKUS",0,1,CYb.VATNr,CYb.OrgNr);
+  end;
+  RETURN;
+END;
+
+global
+updating procedure UpdateEstERecordSent(LongInt RecSerNr)
+BEGIN
+  record ERecordStatusVc ERecordStatusr,oldERecordStatusr;
+  
+  ERecordStatusr.SerNr = RecSerNr;
+  if (ReadFirstMain(ERecordStatusr,1,true)) then begin
+    RecordCopy(oldERecordStatusr,ERecordStatusr);
+    ERecordStatusr.Sent = 1;
+    if (RecordUpdate(oldERecordStatusr,ERecordStatusr,false)) then begin end;    
+  end;
+  RETURN;
+END;
+
+updating procedure ProcessReceivedReply(xml xdata,string CustomerCode,Integer status)
+begin
+  string 255 xkey;
+  Integer i;
+  LongInt RecSerNr;
+
+  xkey = "SOAP-ENV:Envelope/SOAP-ENV:Body/SaleInvoiceExportResponse/";
+  for (i=0; XmlNodeExists(xdata,xkey & "E_Invoice/Invoice[" & i & "]"); i=i+1) begin
+    RecSerNr = XmlGet(xdata,xkey & "E_Invoice/Invoice[" & i & "]/InvoiceInformation/InvoiceNumber");
+    ChangeERecordStatus("estIVVc",RecSerNr,status,UsetStr(33534),CustomerCode);//33034 > 33534
+  end;
+  return;
+end;
+
+procedure SendSupplierInvoiceRequest(record EInvoiceBlock EIb,string service,var xml reply,string status,var date SendDate,var time SendTime)
+begin
+  record VEIVVc VEIVr;
+  area a;
+  string 100 param;
+
+  SendDate = EIb.LastInEstEInvoicesDate;
+  SendTime = EIb.LastInEstEInvoicesTime;
+  if (blankdate(SendDate)) then begin
+    if (ReadFirstMain(VEIVr,1,true)) then begin
+      SendDate = VEIVr.ServiceDelDate;
+      SendTime = VEIVr.TransTime;
+    end;
+  end;
+  if (blankdate(SendDate)) then begin
+    SendDate = AddDay(CurrentDate,-GetDay(CurrentDate)+1);
+    SendTime = CurrentTime;
+  end;
+  SetAreaZeroSize(a);
+  if (EIb.DblAcceptEPay == 0) then begin
+    EstEInvTagValue("erp:state","RECEIVED",10,a);
+  end else begin
+    EstEInvTagValue("erp:state","VERIFIED",10,a);
+  end;
+  EstEInvBuildString2("since",datetostring(SendDate,"DD-MM-YYYY") & " " & SendTime,param);  
+  DoSendRequestToPartner(a,reply,service,"BuyInvoice",param,EIb.PrivateKey,(EIb.DebugFlag==1));
+  return;
+end;
+
+procedure SendSupplierInvoicePdfRequest(record EInvoiceBlock EIb,string service,boolean checkflag,var xml reply,Integer aCnt,array LongInt aInvoiceNr,Integer startIndex)
+begin
+  record VEIVVc VEIVr;
+  area a;
+  Integer i;
+  string 100 param;
+
+  SetAreaZeroSize(a);
+  for (i=0; i<aCnt; i=i+1) begin
+    EstEInvTagValue("erp:invoiceId",aInvoiceNr[i],10,a);
+  end;
+  if (EIb.MexEInvType == 1) then begin//tmp, reuse the field
+    EstEInvBuildString2("onlyInvoice","NO",param);
+  end else begin
+    EstEInvBuildString2("onlyInvoice","YES",param);
+  end;
+  EstEInvBuildString2("startIndex",startIndex,param);  
+
+  DoSendRequestToPartner(a,reply,service,"InvoiceAttachment",param,EIb.PrivateKey,checkflag);
+  return;
+end;
+
+procedure SendSupplierEstEInvoiceStatus(record EInvoiceBlock EIb,string service,boolean checkflag,area a,var xml reply,var Boolean res)
+begin
+  string 100 param;
+
+  res = DoSendRequestToPartner(a,reply,service,"BuyInvoiceRegistered",param,EIb.PrivateKey,checkflag);
+  return;
+end;
+
+procedure SendSupplierRejEstEInvoiceStatus(record EInvoiceBlock EIb,string service,boolean checkflag,area a,var xml reply,string regnr,string namestr)
+begin
+  string 100 param;
+
+  EstEInvBuildString2("regNumber",regnr,param);  
+  EstEInvBuildString2("name",namestr,param);  
+
+  DoSendRequestToPartner(a,reply,service,"RejectConfirmation",param,EIb.PrivateKey,checkflag);
+  return;
+end;
+
+procedure AddStatusToeArveKeskusReply(record ERecordStatusVc ERecordStatusr,var Area a)
+begin
+  string 100 param;
+  
+  EstEInvBuildString2("invoiceId",ERecordStatusr.CustRecRowNr,param);
+  EstEInvStartTag2("erp:RegisteredInvoice",param,a);
+  EstEInvTagValue("erp:ErpDocumentNumber",ERecordStatusr.CustSerNr,250,a);
+  EstEInvEndTag("erp:RegisteredInvoice",a);
+
+  return;
+end;
+
+procedure AddRejStatusToeArveKeskusReply(record ERecordStatusVc ERecordStatusr,string comment,var Area a)
+begin
+  string 100 param;
+
+  EstEInvBuildString2("rejectType","REJECT",param);
+  EstEInvBuildString2("invoiceId",ERecordStatusr.CustRecRowNr,param);
+  EstEInvStartTag2("erp:RejectContent",param,a);
+  AddTextToArea(comment,a);
+  EstEInvEndTag("erp:RejectContent",a);
+
+  return;
+end;
+
+updating procedure ReleaseOnHoldRecords(string filename)
+begin
+  record EInvoiceQueVc EInvoiceQuer,oldEInvoiceQuer;
+  boolean TrHs;
+
+  TrHs = true;
+  EInvoiceQuer.Status = 2;
+  EInvoiceQuer.FileName = filename;
+  while (LoopKey("Status",EInvoiceQuer,2,TrHs)) begin
+    if (EInvoiceQuer.Status <> 2) then begin
+      TrHs = false;
+    end;
+    if (EInvoiceQuer.FileName <> filename) then begin
+      TrHs = false;
+    end;
+    if (TrHs) then begin
+      RecordCopy(oldEInvoiceQuer,EInvoiceQuer);      
+      EInvoiceQuer.Status = 0;//0 - to be sent, 2 - on hold, 45 - failed
+      EInvoiceQuer.Comment = "RELEASED";   
+      RecordUpdate(oldEInvoiceQuer,EInvoiceQuer,false);
+//      StepBack(EInvoiceQuer);
+    end;
+  end;
+  return;
+end;
+
+updating procedure SendEstEInvoiceFromCurCompany(record EInvoiceBlock EIb,string service,string CustomerCode,string filename)
+begin
+  record EInvoiceQueVc EInvoiceQuer,oldEInvoiceQuer;
+  record CYBlock CYb;
+  Area invoices,attachments;
+  LongInt exitlimit,sizelimit,packagesize,sentsize,accumsize;
+  array string 40 addedtostack,addedtostackq;
+  Boolean TrHs;
+  Integer i,cnt,maxcnt,f;
+  record NotepadVc Noter;
+  xml xmlReply;
+  string 255 tstr,tstr2;
+  
+  BlockLoad(CYb);
+  sizelimit = 10000;  
+  exitlimit = 30000;
+
+  cnt = 0;
+  EInvoiceQuer.Status = 2;
+  EInvoiceQuer.FileName = filename;
+  if (ReadFirstKey("Status",EInvoiceQuer,2,true)) then begin
+    if (PrepareEstEInvoiceForSending(EInvoiceQuer,invoices,attachments,EIb)) then begin
+      packagesize = GetAreaLength(invoices)+GetAreaLength(attachments);
+      addedtostack[cnt] = EInvoiceQuer.RecSerNr;
+      addedtostackq[cnt] = EInvoiceQuer.SerNr;
+      cnt = cnt + 1;
+    end;
+  end;
+  if (cnt <= 0) then begin
+    maxcnt = EIb.CntOutEstEInvoices;
+    if (maxcnt <= 0) then begin
+      maxcnt = 10;
+    end;
+    TrHs = true;
+    EInvoiceQuer.Status = 0;
+    EInvoiceQuer.FileName = filename;
+    while (LoopKey("Status",EInvoiceQuer,2,TrHs)) begin
+      if (EInvoiceQuer.Status!=0) then begin
+        TrHs = false;
+      end;
+      if (EInvoiceQuer.FileName<>filename) then begin
+        TrHs = false;
+      end;
+      if (cnt>=maxcnt) then begin TrHs = false; end;
+      if (TrHs) then begin
+        if (PrepareEstEInvoiceForSending(EInvoiceQuer,invoices,attachments,EIb)) then begin
+          packagesize = GetAreaLength(invoices)+GetAreaLength(attachments);
+          addedtostack[cnt] = EInvoiceQuer.RecSerNr;
+          addedtostackq[cnt] = EInvoiceQuer.SerNr;
+          cnt = cnt + 1;
+        end;
+      end;
+    end;
+  end;
+  if (cnt > 0) then begin  
+    if (SendInvoiceToEArvekeskus(invoices,attachments,service,xmlReply,EIb,(EIb.DebugFlag == 1))) then begin
+      for (i=0; i<cnt; i=i+1) begin
+        EInvoiceQuer.SerNr = addedtostackq[i];
+        if (ReadFirstMain(EInvoiceQuer,1,true)) begin
+          SaveERecordStatus(filename,addedtostack[i],CustomerCode,USetStr(1150),2,EInvoiceQuer.CompID,USetStr(33532),"EARVEKESKUS",EInvoiceQuer.RecVersionNr,1,CYb.VATNr,CYb.OrgNr);//33032 > 33532
+          RecordCopy(oldEInvoiceQuer,EInvoiceQuer);      
+          EInvoiceQuer.Status = 18;
+          EInvoiceQuer.Comment = "SENT";
+          if (RecordUpdate(oldEInvoiceQuer,EInvoiceQuer,false)) then begin
+          end;
+        end;
+      end;
+    end else begin
+      i = 0;
+      EInvoiceQuer.SerNr = addedtostackq[i];
+      EInvoiceQuer.FileName = filename;
+      if (ReadFirstMain(EInvoiceQuer,2,true)) begin
+        RecordCopy(oldEInvoiceQuer,EInvoiceQuer);      
+        if (EInvoiceQuer.Status == 2) then begin
+          EInvoiceQuer.Status = 45;//0 - to be sent, 2 - on hold, 45 - failed
+          EInvoiceQuer.Comment = "FAILED";
+//create note !
+          RecordNew(Noter);
+          Noter.SerNr = NextSerNr("NotepadVc",CurrentDate,-1,false,"");
+          f = 0;
+          while (XmlNodeExists(xmlReply,"SOAP-ENV:Envelope/SOAP-ENV:Body/SOAP-ENV:Fault/faultstring[" & f & "]")) begin
+            tstr = XmlGet(xmlReply,"SOAP-ENV:Envelope/SOAP-ENV:Body/SOAP-ENV:Fault/faultcode[" & f & "]");
+            tstr2 = XmlGet(xmlReply,"SOAP-ENV:Envelope/SOAP-ENV:Body/SOAP-ENV:Fault/faultstring[" & f & "]");
+            f = f + 1;
+            AddToText(tstr,Noter);
+            AddToText(Chr(13) & Chr(10),Noter);
+            AddToText(tstr2,Noter);
+            AddToText(Chr(13) & Chr(10),Noter);
+          end;
+          if (RecordStore(Noter,false)) then begin
+            CreateRecordLink(EInvoiceQuer,CurrentCompany,Noter,CurrentCompany);
+          end;
+//end create note
+          if (RecordUpdate(oldEInvoiceQuer,EInvoiceQuer,false)) then begin
+          end;
+          ReleaseOnHoldRecords(filename);
+        end else begin
+          for (i=0; i<cnt; i=i+1) begin
+            EInvoiceQuer.SerNr = addedtostackq[i];
+            EInvoiceQuer.FileName = filename;
+            if (ReadFirstMain(EInvoiceQuer,2,true)) begin
+              RecordCopy(oldEInvoiceQuer,EInvoiceQuer);      
+              EInvoiceQuer.Status = 2;//0 - to be sent, 2 - on hold, 45 - failed
+              EInvoiceQuer.Comment = "ON HOLD";
+              if (RecordUpdate(oldEInvoiceQuer,EInvoiceQuer,false)) then begin
+              end;
+            end;
+          end;
+        end;
+      end;
+    end;
+  end;
+  return;
+end;
+
+//click server
+global
+procedure CheckEstEInvoiceIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Boolean found;
+
+  SCr.Code = "SENDESTEINVOICE";
+  found = ReadFirstMain(SCr,1,true);
+  if (found) then begin
+    CheckEstEInvoicingUsage("estIVVc",SCr.Partner);
+  end;
+  SCr.Code = "RECEIVEESTEINVOICE";
+  found = ReadFirstMain(SCr,1,true);
+  if (found) then begin
+    CheckEstEInvoicingUsage("VEIVVc",SCr.Partner);
+  end;
+  return;
+end;
+
+global
+procedure SendEstEInvoiceIdleTaskRemoveIdleTask(boolean noEServ)
+begin
+  if (RemoveTask("SendEstEInvoice")) then begin
+  end;
+  if (RemoveTask("SentEstEInvoiceStatus")) then begin
+  end;
+  if (noEServ) then begin
+    if (RemoveTask("CheckEstEInvoiceStatus")) then begin
+    end;
+  end;
+  return;
+end;
+
+global
+procedure ReceiveEstEInvoiceIdleTaskRemoveIdleTask(boolean noEServ)
+begin
+  if (RemoveTask("ReceiveEstEInvoice")) then begin
+  end;
+  if (RemoveTask("ReceiveEstEInvoicePdf")) then begin
+  end;
+  if (RemoveTask("SendEstSupEInvoiceStatus")) then begin
+  end;
+  if (noEServ) then begin
+    if (RemoveTask("CheckEstEInvoiceStatus")) then begin
+    end;
+  end;
+  return;
+end;
+
+global
+updating procedure SendEstEInvoiceIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Boolean found,testf,noEServ,stopidletaskf;
+  Integer i,rwcnt,error;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  record InternetEnablerBlock IEb;
+  
+  SCr.Code = "SENDESTEINVOICE";
+  found = ReadFirstMain(SCr,1,true);
+  if (found) then begin   
+    stopidletaskf = true;
+    noEServ = true;
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);    
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+        if (SetCompanyCode(Comprw.CompCode,false)) then begin
+          BlockLoad(EIb);
+          if (EIb.TestFlag == 0) then begin
+            if (CheckInternetEnabler==false) then begin
+              stopidletaskf = false;//tmp
+              error = 33506;
+              LogText(error,"");
+              goto LNextCompanyLine1;
+            end;
+          end;
+          BlockLoad(EIb);
+          if (EIb.StopOutEstEInvoices == 1) then begin
+            if (EIb.OutEstEInvoices==1) then begin
+              stopidletaskf = false;
+            end;
+            goto LNextCompanyLine1;
+          end;
+          if (EIb.DefaultEBehave==0) then begin 
+            goto LNextCompanyLine1;
+          end;
+          testf = true;
+          if (EIb.OutEstEInvoices==0) then begin 
+            testf = false;
+          end;
+          if (EIb.InEstEInvoices==1) then begin
+            noEServ = false;
+          end;
+          if (testf) then begin 
+            BlockLoad(IEb);
+            SendEstEInvoiceFromCurCompany(EIb,SCr.Code,IEb.CustomerCode,"estIVVc");
+            EIb.LastOutEstEInvoicesDate = CurrentDate;
+            EIb.LastOutEstEInvoicesTime = CurrentTime;
+            BlockStore(EIb);
+            stopidletaskf = false;
+          end;
+        end;
+      end;
+LNextCompanyLine1:;
+    end;
+    ResetCompany(oldcomp);
+    if (stopidletaskf) then begin
+      SendEstEInvoiceIdleTaskRemoveIdleTask(noEServ);
+    end;
+  end;
+  if (found==false) then begin
+    LookupForEstCustServices;
+  end;
+  return;
+end;
+
+updating procedure ReceiveEstEInvoiceStatus(record EInvoiceBlock EIb,string service,boolean checkflag,string CustomerCode,Integer status,string type)
+begin
+  xml reply;
+
+  DoReceiveEstEInvoiceStatus(EIb,service,checkflag,reply,type);
+  ProcessReceivedReply(reply,CustomerCode,status);
+  return;
+end;
+
+global
+updating procedure SentEstEInvoiceStatusIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Boolean found,testf;
+  Integer i,rwcnt,error;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  record InternetEnablerBlock IEb;
+  Time t;
+
+  SCr.Code = "SENDESTEINVOICE";
+  found = ReadFirstMain(SCr,1,true);
+  if (found) then begin   
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);    
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+        if (SetCompanyCode(Comprw.CompCode,false)) then begin
+          BlockLoad(EIb);
+          if (EIb.TestFlag == 0) then begin
+            if (CheckInternetEnabler==false) then begin
+              error = 33506;
+              LogText(error,"");
+              goto LNextCompanyLine2;
+            end;
+          end;
+          if (EIb.StopOutEstEInvStatus == 1) then begin
+            goto LNextCompanyLine2;
+          end;
+          if (EIb.DefaultEBehave==0) then begin 
+            goto LNextCompanyLine2;
+          end;
+          testf = true;
+          if (EIb.OutEstEInvoices==0) then begin 
+            testf = false;
+          end;
+          if (testf) then begin
+            BlockLoad(IEb);
+            ReceiveEstEInvoiceStatus(EIb,SCr.Code,(EIb.DebugFlag),IEb.CustomerCode,4,"SENT");//imported
+            EIb.LastOutEstEInvStatusDate = CurrentDate;
+            t = AddSeconds(CurrentTime,1);
+            EIb.LastOutEstEInvStatusTime = t;
+            BlockStore(EIb);
+          end;
+        end;
+      end;
+LNextCompanyLine2:;
+    end;
+    ResetCompany(oldcomp);
+  end;
+LSentEstEInvoiceStatusIdleTask:;
+  return;
+end;
+
+procedure PutVATCodeToVEIVRow(row VEIVVc VEIVrw)
+BEGIN
+  record VATCodeBlock VCb;
+  row VATCodeBlock VCrw;
+  Integer i,rwcnt,j;
+  string 20 vatcode;
+  record APAccBlock APb;
+  Boolean foundf;
+  
+  BlockLoad(VCb);
+  vatcode = "";
+  rwcnt = MatRowCnt(VCb);
+  for (i=0;i<rwcnt;i=i+1) begin
+    MatRowGet(VCb,i,VCrw);
+    if (VCrw.ExVatpr==VEIVrw.VEVATPrc) then begin
+      vatcode = VCrw.VATCode;
+      goto LPutVATCodeToVEIVRow;
+    end;
+  end;
+  if (blank(vatcode)) then begin
+    BlockLoad(APb);
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(VCb,i,VCrw);
+      if (VCrw.VATCode==APb.VATCodeDom) then begin
+        if (VCrw.ExVatpr==VEIVrw.VEVATPrc) then begin
+          vatcode = VCrw.VATCode;
+          goto LPutVATCodeToVEIVRow;
+        end;
+      end;
+    end;    
+  end;
+LPutVATCodeToVEIVRow:;  
+  VEIVrw.VATCode = vatcode;
+  RETURN;
+END;
+
+procedure PutOurDataToVEIV(record VEIVVc VEIVr)
+BEGIN
+  record VIVc VIr;
+  record PIVc PIr;
+  record CUVc VEr;
+  record INVc INr;
+  row VEIVVc VEIVrw;
+  Integer i,rwcnt;
+  string 255 vatcode,costacc;
+  boolean foundf;
+
+  VEr.Code = VEIVr.VECode;
+  foundf = ReadFirstMain(VEr,1,true);
+  if (foundf == false) then begin
+    VEr.RegNr1 = VEIVr.VERegNr1;
+    foundf = ReadFirstKey("VEActRegNr1",VEr,1,true);//cust, orig RegNr1
+    VEIVr.VECode = VEr.Code;
+  end;
+  if (VEIVr.VESerNr>0) then begin
+    VIr.InvoiceNr = VEIVr.VESerNr;
+  end else begin
+//tmp    VIr.InvoiceNr = VEIVr.InvoiceNr;
+  end;
+  VIr.VECode = VEIVr.VECode;
+  if (ReadFirstKey("InvoiceNr",VIr,2,true)) then begin
+    VEIVr.VISerNr = VIr.SerNr;
+    goto LPutOurDataToVEIV;
+  end;
+  rwcnt = MatRowCnt(VEIVr);
+  for (i=0;i<rwcnt;i=i+1) begin
+    MatRowGet(VEIVr,i,VEIVrw);
+    if (VEIVrw.stp==1) then begin
+      if (nonblank(VEIVrw.VEArtCode)) then begin
+        PIr.VECode = VEIVr.VECode;
+        PIr.VEItemCode = VEIVrw.VEArtCode;
+        if (ReadFirstKey("VEItemCode",PIr,2,true)) then begin
+          VEIVrw.ArtCode = PIr.ItemCode;
+          VEIVrw.Quant = VEIVrw.VEQuant;
+          if (PIr.PIFactor!=0) then begin
+            VEIVrw.VEQuant = VEIVrw.VEQuant*PIr.PIFactor;
+          end;
+          vatcode = "";
+          if (blank(vatcode)) then begin
+            GetItemVATCode(VEIVrw.ArtCode,VEIVr.ExportFlag,vatcode,false);
+          end;
+//cust - begin: TS 2017/01      
+          if (blank(VEIVrw.VATCode)) then begin
+            VEIVrw.VATCode = vatcode;
+          end;
+//cust - end
+          if (blank(VEIVrw.CostAcc)) then begin
+            if (ReadFirstItem(VEIVrw.ArtCode,INr,true,false)) then begin
+              GetINCostAcc(INr,costacc);
+              VEIVrw.CostAcc = costacc;
+            end;
+          end;
+        end;
+      end;
+    end;
+    if (blank(VEIVrw.VATCode)) then begin
+      PutVATCodeToVEIVRow(VEIVrw);
+    end;
+    MatRowPut(VEIVr,i,VEIVrw);
+  end;
+LPutOurDataToVEIV:;  
+  RETURN;
+END;
+
+updating procedure ProcessReceived2Reply(xml xdata,string ourCustomerCode,var date td,var time t)
+begin
+  record VEIVVc VEIVr,oldVEIVr;
+  row VEIVVc VEIVrw;
+  record PDVc PDr;
+  string 255 xkey,xsubkey,xsubkey2,xsubkey3,tstr,accstr,objstr,tdstr,InvoiceNr;
+  val tmpVal,v;
+  Integer i,j,k,i0,rownr;
+  Boolean testf,foundf,credf;
+  Date tmpDate;
+
+  xkey = "SOAP-ENV:Envelope/SOAP-ENV:Body/BuyInvoicesResponse";
+ // td = CurrentDate;
+ // t = CurrentTime;
+  if (XmlNodeExists(xdata,xkey)) then begin
+    tdstr = Left(XmlGetAttribute(xdata,xkey,"latestChange"),10);
+    t = Right(XmlGetAttribute(xdata,xkey,"latestChange"),8);
+    td.year = StringToLongInt(Left(tdstr,4));
+    td.month = StringToInt(Mid(tdstr,5,2));
+    td.day = StringToInt(Right(tdstr,2));
+  end;
+  i = 0;
+  while (XmlNodeExists(xdata,"SOAP-ENV:Envelope/SOAP-ENV:Body/BuyInvoicesResponse/E_Invoice/Invoice[" & i & "]")) begin
+    RecordNew(VEIVr);
+    testf = false;
+    xkey = "SOAP-ENV:Envelope/SOAP-ENV:Body/BuyInvoicesResponse";
+    xkey = xkey & "/E_Invoice/Invoice[" & i & "]/";
+    VEIVr.VESerNr = XmlGetAttribute(xdata,"SOAP-ENV:Envelope/SOAP-ENV:Body/BuyInvoicesResponse/E_Invoice/Invoice[" & i & "]","invoiceId");
+//    VEIVr.CalcFinRef = XmlGetAttribute(xdata,"SOAP-ENV:Envelope/SOAP-ENV:Body/BuyInvoicesResponse/E_Invoice/Invoice[" & i & "]","ServiceId");//refstr
+    VEIVr.VersionNr = 10000;
+    xsubkey = xkey & "InvoiceParties/SellerParty/";
+    VEIVr.VECode = XmlGet(xdata,xsubkey & "UniqueCode");
+    VEIVr.VECompName = XmlGet(xdata,xsubkey & "Name");
+    VEIVr.VERegNr1 = XmlGet(xdata,xsubkey & "RegNumber");
+    VEIVr.VEVATNr = XmlGet(xdata,xsubkey & "VATRegNumber");
+    xsubkey = xkey & "InvoiceParties/SellerParty/ContactData/";
+    VEIVr.VEPhone = XmlGet(xdata,xsubkey & "PhoneNumber");
+    VEIVr.VEeMail = XmlGet(xdata,xsubkey & "E-mailAddress");
+    xsubkey = xkey & "InvoiceParties/SellerParty/ContactData/LegalAddress/";
+    VEIVr.VEAddr0 = XmlGet(xdata,xsubkey & "PostalAddress1");
+    VEIVr.VEAddr1 = XmlGet(xdata,xsubkey & "City");
+    VEIVr.VEAddr2 = XmlGet(xdata,xsubkey & "PostalCode");
+    VEIVr.VECountryCode = XmlGet(xdata,xsubkey & "Country");
+    VEIVr.LangCode = XmlGet(xdata,xsubkey & "languageId");
+    xsubkey = xkey & "InvoiceParties/SellerParty/";
+    j = 0;
+    if (XmlNodeExists(xdata,xsubkey & "AccountInfo[" & j & "]")) then begin
+      xsubkey2 = xsubkey & "AccountInfo[" & j & "]/";
+      VEIVr.VEBank2 = XmlGet(xdata,xsubkey2 & "AccountNumber");
+      VEIVr.VEBank1 = XmlGet(xdata,xsubkey2 & "BankName");
+    end;
+//BuyerParty
+    xsubkey = xkey & "InvoiceParties/BuyerParty/";
+    VEIVr.RegNr1 = XmlGet(xdata,xsubkey & "RegNumber");
+    VEIVr.VATNr = XmlGet(xdata,xsubkey & "VATRegNumber");
+    xsubkey = xkey & "InvoiceParties/SellerParty/ContactData/";
+    VEIVr.Phone = XmlGet(xdata,xsubkey & "PhoneNumber");
+    xsubkey = xkey & "InvoiceParties/BuyerParty/ContactData/LegalAddress/";
+    VEIVr.Addr0 = XmlGet(xdata,xsubkey & "PostalAddress1");
+    VEIVr.Addr1 = XmlGet(xdata,xsubkey & "City");
+    VEIVr.Addr2 = XmlGet(xdata,xsubkey & "PostalCode");
+    xsubkey = xkey & "InvoiceParties/BuyerParty/ContactData/MailAddress/";//from company
+    VEIVr.ShipAddr0 = XmlGet(xdata,xsubkey & "PostalAddress1");
+    VEIVr.ShipAddr1 = XmlGet(xdata,xsubkey & "City");
+    VEIVr.ShipAddr2 = XmlGet(xdata,xsubkey & "PostalCode");
+    VEIVr.ShipAddr3 = XmlGet(xdata,xsubkey & "Country");
+//InvoiceInformation
+    xsubkey = xkey & "InvoiceInformation/Type";
+    if (XmlGetAttribute(xdata,xsubkey,"type") == "CRE") then begin
+      VEIVr.InvType = kInvoiceTypeCredit;
+      credf = true;
+    end;
+    xsubkey = xkey & "InvoiceInformation/";
+//cust - begin: TS 2016/06
+    tstr = XmlGet(xdata,xsubkey & "ContractNumber");
+    if (nonblank(tstr)) then begin
+      VEIVr.OurOrdNr = StringToLongInt(tstr);
+    end;
+//cust - end
+    InvoiceNr = XmlGet(xdata,xsubkey & "InvoiceNumber");
+    oldVEIVr.RegNr1 = VEIVr.RegNr1;
+    oldVEIVr.VESerNr = VEIVr.VESerNr;
+    oldVEIVr.InvoiceNr = InvoiceNr;
+    if (ReadLastKey("RegNr1",oldVEIVr,3,true)) then begin
+      testf = true;
+    end;
+    VEIVr.InvComment = XmlGet(xdata,xsubkey & "InvoiceContentText");
+    if (blank(VEIVr.InvComment)) then begin
+      VEIVr.InvComment = XmlGet(xdata,xsubkey & "comment");
+    end;
+    VEIVr.CalcFinRef = XmlGet(xdata,xsubkey & "PaymentReferenceNumber");
+    VEIVr.InvDate = XmlGetDate(xdata,xsubkey & "InvoiceDate","YYYY-MM-DD");
+    VEIVr.PayDate = XmlGetDate(xdata,xsubkey & "DueDate","YYYY-MM-DD");
+    VEIVr.TransDate = VEIVr.InvDate;
+    VEIVr.InvoiceNr = InvoiceNr;
+    if (VEIVr.InvType == kInvoiceTypeCredit) then begin
+      foundf = true;
+      PDr.Code = "";
+      ResetLoop(PDr);
+      while (LoopMain(PDr,1,foundf)) begin
+        if ((PDr.PDType)==3) then begin //credit note
+          foundf = false;
+          VEIVr.PayDeal = PDr.Code;
+        end;  
+      end;  
+    end else begin
+      VEIVr.PayDeal = DateDiff(VEIVr.PayDate,VEIVr.InvDate);
+    end;
+    VEIVr.OurPayDeal = VEIVr.PayDeal;
+    VEIVr.IntCode = XmlGet(xdata,xsubkey & "FineRatePerDay");//is it per day?
+    j = 0;
+    while (XmlNodeExists(xdata,xsubkey & "Extension[" & j & "]")) begin
+      xsubkey2 = xsubkey & "Extension[" & j & "]";
+      if (XmlGetAttribute(xdata,xsubkey2,"extensionId")=="eakTransactionDate") then begin
+        VEIVr.TransDate = XmlGetDate(xdata,xsubkey2 & "/InformationContent","YYYY-MM-DD");
+      end;
+      if (XmlGetAttribute(xdata,xsubkey2,"extensionId")=="eakBuyInvoiceComment") then begin
+        VEIVr.InvComment = XmlGet(xdata,xsubkey2 & "InformationContent");
+      end;
+      if (XmlGetAttribute(xdata,xsubkey2,"extensionId")=="eakPurchaseOrderRef") then begin
+        VEIVr.OurOrdNr = XmlGet(xdata,xsubkey2 & "/InformationContent");
+      end;
+      if (XmlGetAttribute(xdata,xsubkey2,"extensionId")=="eakInvoiceRegion") then begin
+        VEIVr.Region = XmlGet(xdata,xsubkey2 & "/InformationContent");  
+      end;
+      j = j + 1;
+    end;
+//InvoiceSumGroup
+    xsubkey = xkey & "InvoiceSumGroup/";
+    k = 0;
+    while (XmlNodeExists(xdata,xkey & "InvoiceSumGroup/VAT[" & k & "]")) begin
+      xsubkey = xkey & "InvoiceSumGroup/VAT[" & k & "]/";
+      v = XmlGetVal(xdata,xsubkey & "SumBeforeVAT",M4Val,",","");
+      if (credf and v<0) then begin
+        v = -v;
+      end;
+      VEIVr.Sum1 = VEIVr.Sum1 + v;
+      v = XmlGetVal(xdata,xsubkey & "VATSum",M4Val,",","");
+      if (credf and v<0) then begin
+        v = -v;
+      end;
+      VEIVr.Sum3 = VEIVr.Sum3 + v;
+      k = k + 1;
+    end;
+    xsubkey = xkey & "InvoiceSumGroup/";
+    VEIVr.VETotQty = XmlGetVal(xdata,xsubkey & "InvoiceItemTotalAmount",M4Val,",","");
+    v = XmlGetVal(xdata,xsubkey & "TotalSum",M4Val,",","");
+    if (credf and v<0) then begin
+      v = -v;
+    end;
+    VEIVr.Sum4     = v;
+    VEIVr.CurncyCode = XmlGet(xdata,xsubkey & "Currency");
+    tstr = XmlGetAttribute(xdata,xsubkey,"extensionId");
+    rownr = 0;
+    i0 = 0;
+    while (XmlNodeExists(xdata,xkey & "InvoiceItem/InvoiceItemGroup[" & i0 & "]")) begin
+      xsubkey = xkey & "InvoiceItem/InvoiceItemGroup[" & i0 & "]/";
+      j = 0;
+      while (XmlNodeExists(xdata,xsubkey & "ItemEntry[" & j & "]")) begin
+        ClearRow(VEIVr,VEIVrw,1);
+        xsubkey2 = xsubkey & "ItemEntry[" & j & "]/";
+        VEIVrw.VEArtCode = XmlGet(xdata,xsubkey2 & "SellerProductId");
+        VEIVrw.ArtCode = XmlGet(xdata,xsubkey2 & "BuyerProductId");
+        VEIVrw.VESpec = XmlGet(xdata,xsubkey2 & "Description");
+        VEIVrw.VESerialNr = XmlGet(xdata,xsubkey2 & "SerialNumber");
+        k = 0;
+        objstr = "";
+        while (XmlNodeExists(xdata,xsubkey2 & "Accounting/JournalEntry[" & k & "]")) begin
+          xsubkey3 = xsubkey2 & "Accounting/JournalEntry[" & k & "]/";
+          accstr = XmlGet(xdata,xsubkey3 & "GeneralLedger");
+          tstr = XmlGet(xdata,xsubkey3 & "CostObjective");
+          if (nonblank(tstr) and nonblank(objstr)) then begin
+            objstr = objstr & ",";
+          end;
+          objstr = objstr & tstr;  
+          k = k + 1;
+        end;
+        VEIVrw.CostAcc = accstr;
+        VEIVrw.Objects = objstr;
+        k = 0;
+        while (XmlNodeExists(xdata,xsubkey2 & "ItemReserve[" & k & "]")) begin
+          xsubkey3 = xsubkey2 & "ItemReserve[" & k & "]";
+          if (XmlGetAttribute(xdata,xsubkey3,"extensionId")=="eakInvoiceItemId") then begin
+            VEIVrw.VEArtCode = XmlGet(xdata,xsubkey3 & "/InformationContent");
+          end;
+          if (XmlGetAttribute(xdata,xsubkey3,"extensionId")=="eakOppositeAccount") then begin
+            accstr = XmlGet(xdata,xsubkey3 & "/InformationContent");  
+          end;
+//cust - begin: TS 2017/01
+          if (XmlGetAttribute(xdata,xsubkey3,"extensionId")=="eakVatCode") then begin
+            VEIVrw.VATCode = XmlGet(xdata,xsubkey3 & "/InformationContent");
+          end;
+//cust - end
+          k = k + 1;
+        end;
+        if (nonblank(accstr)) then begin
+          VEIVr.CostAcc = accstr;
+        end;     
+        VEIVrw.VEUnitCode = XmlGet(xdata,xsubkey2 & "ItemUnit");
+        VEIVrw.VEQuant = XmlGetVal(xdata,xsubkey2 & "ItemAmount",M4Val,",","");
+        v = XmlGetVal(xdata,xsubkey2 & "ItemPrice",M4Val,",","");
+        if (credf and v<0) then begin
+          v = -v;
+        end;
+        VEIVrw.VEPrice = v;  
+        v = XmlGetVal(xdata,xsubkey2 & "ItemSum",M4Val,",","");
+        if (credf and v<0) then begin
+          v = -v;
+        end;
+        VEIVrw.VESum   = v;  
+        xsubkey3 = xsubkey2 & "Addition";
+        if (XmlGetAttribute(xdata,xsubkey3,"addCode") == "DSC") then begin
+          tmpVal = XmlGetVal(xdata,xsubkey3 & "/AddRate",M4Val,",","");//-15
+          if (tmpVal <> 0) then begin
+            tmpVal = -tmpVal;
+          end;
+          VEIVrw.VEvRebate = tmpVal;
+        end;
+        xsubkey2 = xsubkey & "ItemEntry[" & j & "]/VAT/";
+        v = XmlGetVal(xdata,xsubkey2 & "SumBeforeVAT",M4Val,",","");
+        if (credf and v<0) then begin
+          v = -v;
+        end;
+        VEIVrw.VESum = v;
+        VEIVrw.VEVATPrc = XmlGetVal(xdata,xsubkey2 & "VATRate",M4UVal,",","");//20
+        v = XmlGetVal(xdata,xsubkey2 & "VATSum",M4Val,",","");
+        if (credf and v<0) then begin
+          v = -v;
+        end;
+        VEIVrw.VEVATSum = v;
+        xsubkey2 = xsubkey & "ItemEntry[" & j & "]/";
+        MatRowPut(VEIVr,rownr,VEIVrw);
+        rownr = rownr + 1;
+        j = j + 1;
+      end;
+      i0 = i0 + 1;
+    end;
+//PaymentInfo
+    xsubkey = xkey & "PaymentInfo/";
+//cust - begin: TS 2017/05
+    //VEIVr.PayToAccount = XmlGet(xdata,xsubkey & "PayToAccount");
+    //VEIVr.PayToName = XmlGet(xdata,xsubkey & "PayToName");
+//cust - end
+    PutOurDataToVEIV(VEIVr);
+    if (testf) then begin
+      VEIVr.VersionNr = oldVEIVr.VersionNr + 1;
+    end;
+    if (VEIVr.VersionNr<0) then begin VEIVr.VersionNr = 0; end;
+    VEIVr.SerNr = NextSerNr("VEIVVc",VEIVr.TransDate,-1,false,"");
+    if (VEIVr.SerNr>0) then begin
+      if (RecordStore(VEIVr,false)) then begin 
+      end;
+    end;
+    i = i + 1;
+  end;
+  return;
+end;
+
+procedure BreakIntoBase64Lines(Area img,var area tmpimg)
+begin
+  longint i,l,x;
+  integer colwidth;
+  string 255 line;
+  
+  SetAreaZeroSize(tmpimg);
+  i=0;
+  l = GetAreaLength(img);
+  while (i<l) begin
+    x = l-i;
+    if (x>80) then begin
+      colwidth = 80;
+    end else begin
+      colwidth = x;
+    end;
+    line = GetStringFromArea(img,i,colwidth);
+    AddTextToArea(line & chr(10),tmpimg);
+    i = i+colwidth;
+  end;
+  return;
+end;
+
+updating procedure AttachFileToVEVI(record VEIVVc VEIVr,string fnamep,Area a)
+begin
+  Area tmpa,bina;
+  string 100 fname;
+  
+  fname = "tmp/" & fnamep;
+  BreakIntoBase64Lines(a,tmpa);
+  AreaBase64Decode(tmpa,bina);
+  CreateFile(fname);
+  CloseFile;
+  WriteAreaToFile(bina,fname,0);
+
+  if (RecordLinkFile(fname,0,VEIVr,CurrentCompany)) then begin end;
+
+  Delete_File(fname);
+
+  return;
+end;
+
+updating procedure ProcessReceived2PdfReply(xml xdata,LongInt serrange,var Integer nextAttachmentIndex,var Integer TotalCnt)
+begin
+  record VEIVVc VEIVr,oldVEIVr;
+  string 255 xkey,regnr,fname;
+  LongInt InvoiceID;
+  Integer i;
+  Boolean testf,TrHs;
+  Area da;
+  
+  TotalCnt = 0;
+  if (ReadFirstMain(VEIVr,1,false)) then begin 
+    regnr = VEIVr.RegNr1;
+  end;
+  xkey = "SOAP-ENV:Envelope/SOAP-ENV:Body/erp:InvoiceAttachmentResponse";
+  nextAttachmentIndex = StringToInt(XmlGetAttribute(xdata,xkey,"nextAttachmentIndex"));
+
+  i = 0;
+  while (XmlNodeExists(xdata,"SOAP-ENV:Envelope/SOAP-ENV:Body/erp:InvoiceAttachmentResponse/InvoiceAttachment[" & i & "]")) begin
+    TotalCnt = TotalCnt + 1;
+    testf = false;
+    xkey = "SOAP-ENV:Envelope/SOAP-ENV:Body/erp:InvoiceAttachmentResponse/InvoiceAttachment[" & i & "]";
+    InvoiceID = StringToLongInt(XmlGetAttribute(xdata,xkey,"invoiceId"));
+    fname = XmlGetAttribute(xdata,xkey,"fileName");
+    if (nonblank(InvoiceID)) then begin
+      VEIVr.RegNr1 = regnr;
+      VEIVr.VESerNr = InvoiceID;
+      TrHs = true;
+      ResetLoop(VEIVr);
+      while (LoopKey("RegNr1",VEIVr,2,TrHs)) begin
+        if (VEIVr.VESerNr == InvoiceID) and (VEIVr.SerNr >= serrange) then begin
+          XmlGetArea(xdata,xkey & "/AttachmentContent",da);
+          AttachFileToVEVI(VEIVr,fname,da);
+          SetAreaZeroSize(da);
+          TrHs = false;
+        end;
+      end;
+    end;
+    
+    i = i + 1;
+  end;
+  return;
+end;
+
+updating procedure DoSendSupplierEstEInvoiceStatus(record EInvoiceBlock EIb,string service,boolean checkflag,var xml reply)
+begin
+  record ERecordStatusVc ERecordStatusr,oldERecordStatusr;
+  Boolean res,foundf,testf;
+  array LongInt aRecordNr;
+  Integer i,cnt;
+  Area a;
+
+  cnt = 0;
+  ERecordStatusr.FileName = "VEIVVc";
+  ERecordStatusr.Status = 1;
+  foundf = true;
+  while (LoopKey("FileNameStatus",ERecordStatusr,2,foundf)) begin
+    if (ERecordStatusr.FileName <> "VEIVVc") then begin
+      foundf = false;
+    end;
+    if (ERecordStatusr.Status <> 1) then begin
+      foundf = false;
+    end;
+    testf = true;
+    if (ERecordStatusr.CompNr <> CurrentCompany) then begin
+      testf = false;
+    end;
+    if foundf and testf then begin
+      AddStatusToeArveKeskusReply(ERecordStatusr,a);
+      aRecordNr[cnt] = ERecordStatusr.SerNr;
+      cnt = cnt + 1;
+      if (cnt >= 1000) then begin
+        foundf = false;
+      end;
+    end;
+  end;
+  if (cnt > 0) then begin
+    SendSupplierEstEInvoiceStatus(EIb,service,checkflag,a,reply,res);
+    if (res) then begin
+      for (i=0; i<cnt; i=i+1) begin
+        ERecordStatusr.SerNr = aRecordNr[i];
+        if (ReadFirstMain(ERecordStatusr,1,true)) then begin
+          RecordCopy(oldERecordStatusr,ERecordStatusr);
+          ERecordStatusr.Status = 2;
+          if (RecordUpdate(oldERecordStatusr,ERecordStatusr,false)) then begin end;    
+        end;
+      end;
+    end;
+  end;
+  return;
+end;
+
+procedure DoSendSupplierRejEstEInvoiceStatus(record EInvoiceBlock EIb,string service,boolean checkflag,var xml reply)
+begin
+  record ERecordStatusVc ERecordStatusr;
+  string 100 prevcontact,user,comment,prevregnr;
+  Integer pos;
+  Boolean foundf,testf;
+  array LongInt aRecordNr;
+  Integer i,cnt;
+  Area a;
+
+  cnt = 0;
+  ERecordStatusr.FileName = "VEIVVc";
+  ERecordStatusr.Status = 0;
+  foundf = true;
+  while (LoopKey("FileNameStatus",ERecordStatusr,2,foundf)) begin
+    if (ERecordStatusr.FileName <> "VEIVVc") then begin
+      foundf = false;
+    end;
+    if (ERecordStatusr.Status <> 0) then begin
+      foundf = false;
+    end;
+    testf = true;
+    if (ERecordStatusr.CompNr <> CurrentCompany) then begin
+      testf = false;
+    end;
+    if foundf and testf then begin
+      pos = 0;
+      ExtractObjWithSeparator(";",ERecordStatusr.Comment,true,pos,comment);
+      ExtractObjWithSeparator(";",ERecordStatusr.Comment,true,pos,user);
+      if ((i>0) and ((user <> prevcontact) or (prevregnr <> ERecordStatusr.RegNr1))) then begin
+        SendSupplierRejEstEInvoiceStatus(EIb,service,checkflag,a,reply,prevregnr,prevcontact);
+        SetAreaZeroSize(a);
+        cnt = 0;
+      end;
+      AddRejStatusToeArveKeskusReply(ERecordStatusr,comment,a);
+      prevcontact = user;
+      prevregnr = ERecordStatusr.RegNr1;
+      aRecordNr[cnt] = ERecordStatusr.SerNr;
+      cnt = cnt + 1;
+      if (cnt >= 1000) then begin
+        foundf = false;
+      end;
+    end;
+  end;
+  if (i>0) then begin
+    SendSupplierRejEstEInvoiceStatus(EIb,service,checkflag,a,reply,prevregnr,prevcontact);
+  end;
+  return;
+end;
+
+updating procedure GetSupplierEstEInvoice(record EInvoiceBlock EIb,string service,string CustomerCode,Integer type,string status,var date td,var time t)
+begin
+  xml reply;
+
+  SendSupplierInvoiceRequest(EIb,service,reply,status,td,t);
+  ProcessReceived2Reply(reply,CustomerCode,td,t);
+  return;
+end;
+
+global
+updating procedure ReceiveEstEInvoiceIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Boolean found,testf,noEServ,stopidletaskf;
+  Integer i,rwcnt,error;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  record InternetEnablerBlock IEb;
+  Date td;
+  Time t;
+
+  SCr.Code = "RECEIVEESTEINVOICE";
+  found = ReadFirstMain(SCr,1,true);
+  if (found) then begin
+    stopidletaskf = true;
+    noEServ = true;
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);    
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+        if (SetCompanyCode(Comprw.CompCode,false)) then begin
+          BlockLoad(EIb);
+          if (EIb.TestFlag == 0) then begin
+            if (CheckInternetEnabler==false) then begin
+              error = 33506;
+              LogText(error,"");
+              goto LNextCompanyLine3;
+            end;
+          end;
+          if (EIb.StopInEstEInvoices == 1) then begin
+            if (EIb.InEstEInvoices==0) then begin 
+              stopidletaskf = false;
+            end;
+            goto LNextCompanyLine3;
+          end;
+          testf = true;
+          if (EIb.InEstEInvoices==0) then begin 
+            testf = false;
+          end;
+          if (EIb.OutEstEInvoices==1) then begin 
+            noEServ = false;
+          end;
+          if (testf) then begin
+            BlockLoad(IEb);
+            GetSupplierEstEInvoice(EIb,SCr.Code,IEb.CustomerCode,1,"",td,t);
+            EIb.LastInEstEInvoicesDate = td;
+            EIb.LastInEstEInvoicesTime = t;
+            BlockStore(EIb);
+            stopidletaskf = false;
+          end;
+        end;
+      end;
+LNextCompanyLine3:;
+    end;
+    ResetCompany(oldcomp);
+    if (stopidletaskf) then begin
+      ReceiveEstEInvoiceIdleTaskRemoveIdleTask(noEServ);
+    end;
+  end;
+LReceiveEstEInvoiceIdleTask:;
+  return;
+end;
+
+updating procedure GetSupplierEstEInvoicePdf(record EInvoiceBlock EIb,string service,var LongInt LastChecked)
+begin
+  record EInvoiceQueVc EInvoiceQuer,oldEInvoiceQuer;
+  xml reply;
+  record VEIVVc VEIVr,oldVEIVr;
+  Boolean TrHs,test,errf;
+  Integer aCnt,maxcnt,nextAttacmentIndex,TotalCnt,startIndex;
+  array LongInt aSerNr;
+  array LongInt aInvoiceNr;
+  string 255 tstr;
+
+  LastChecked = EIb.LastInEstEInvStatusSerial;
+  maxcnt = EIb.CntInEstEInvPdf;
+  if (maxcnt <= 0) then begin
+    maxcnt = 10;
+  end;
+  aCnt = 0;
+  TrHs = true;
+  VEIVr.SerNr = EIb.LastInEstEInvStatusSerial;
+  VEIVr.SerNr = VEIVr.SerNr + 1;
+  while (LoopMain(VEIVr,1,TrHs)) begin
+    if (TrHs) then begin
+      aSerNr[aCnt] = VEIVr.SerNr;
+      aInvoiceNr[aCnt] = VEIVr.VESerNr;
+      aCnt = aCnt + 1;
+      if (aCnt >= maxcnt) then begin
+        TrHs = false;
+      end;
+    end;
+  end;
+  if (aCnt > 0) then begin
+    startIndex = 1;
+L12:;
+    SendSupplierInvoicePdfRequest(EIb,service,(EIb.DebugFlag==1),reply,aCnt,aInvoiceNr,startIndex);
+    if (XmlNodeExists(reply,"SOAP-ENV:Envelope/SOAP-ENV:Body/SOAP-ENV:Fault/faultstring")) then begin
+      tstr = XmlGet(reply,"SOAP-ENV:Envelope/SOAP-ENV:Body/SOAP-ENV:Fault/faultcode");
+      errf = true;
+      if (LastInRange(tstr,5)=="71") then begin      
+        LastChecked = aSerNr[aCnt-1];
+      end;
+    end;
+    if (errf==false) then begin
+      ProcessReceived2PdfReply(reply,EIb.LastInEstEInvStatusSerial,nextAttacmentIndex,TotalCnt);
+      if (nextAttacmentIndex >= (startIndex + TotalCnt)) then begin
+        startIndex = nextAttacmentIndex;
+        goto L12;
+      end;
+      LastChecked = aSerNr[aCnt-1];
+    end;
+  end;
+  return;
+end;
+
+global
+updating procedure ReceiveEstEInvoicePdfIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Boolean found,testf;
+  Integer i,rwcnt,error;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  LongInt LastChecked;
+
+  SCr.Code = "RECEIVEESTEINVOICE";
+  found = ReadFirstMain(SCr,1,true);
+  if (found) then begin   
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);    
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+        if (SetCompanyCode(Comprw.CompCode,false)) then begin
+          BlockLoad(EIb);
+          if (EIb.TestFlag == 0) then begin
+            if (CheckInternetEnabler==false) then begin
+              error = 33506;
+              LogText(error,"");
+              goto LNextCompanyLine4;
+            end;
+          end;
+          if (EIb.StopInEstEInvPdf == 1) then begin
+            goto LNextCompanyLine4;
+          end;
+          testf = true;
+          if (EIb.InEstEInvoices==0) then begin 
+            testf = false;
+          end;
+          if (testf) then begin
+            GetSupplierEstEInvoicePdf(EIb,SCr.Code,LastChecked);
+            if (EIb.LastInEstEInvStatusSerial <> LastChecked) then begin
+              EIb.LastInEstEInvStatusSerial = LastChecked;
+              BlockStore(EIb);  
+            end;
+          end;
+        end;
+      end;
+LNextCompanyLine4:;
+    end;
+    ResetCompany(oldcomp);
+  end;
+LReceiveEstEInvoiceIdleTask:;
+  return;
+end;
+
+global
+updating procedure SendEstSupEInvoiceIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Boolean found,testf;
+  Integer i,rwcnt,error;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  xml reply;
+
+  SCr.Code = "RECEIVEESTEINVOICE";
+  found = ReadFirstMain(SCr,1,true);
+  if (found) then begin   
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);    
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+        if (SetCompanyCode(Comprw.CompCode,false)) then begin
+          BlockLoad(EIb);
+          if (EIb.TestFlag == 0) then begin
+            if (CheckInternetEnabler==false) then begin
+              error = 33506;
+              LogText(error,"");
+              goto LNextCompanyLine5;
+            end;
+          end;
+          if (EIb.StopInEstEInvoices == 1) then begin
+            goto LNextCompanyLine5;
+          end;
+          testf = true;
+          if (EIb.InEstEInvoices==0) then begin 
+            testf = false;
+          end;
+          if (testf) then begin
+            DoSendSupplierEstEInvoiceStatus(EIb,SCr.Code,(EIb.DebugFlag==1),reply);
+            DoSendSupplierRejEstEInvoiceStatus(EIb,SCr.Code,(EIb.DebugFlag==1),reply);
+            EIb.LastInEstEInvStatusDate = CurrentDate;
+            EIb.LastInEstEInvStatusTime = CurrentTime;
+            BlockStore(EIb);
+          end;
+        end;
+      end;
+LNextCompanyLine5:;
+    end;
+    ResetCompany(oldcomp);
+  end;
+LSendEstSupEInvoiceIdleTask:;
+  return;
+end;

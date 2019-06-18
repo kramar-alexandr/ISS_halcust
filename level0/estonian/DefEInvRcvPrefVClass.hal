@@ -1,0 +1,63 @@
+window DefEInvRcvPrefVClass:1
+  wtag("language","EST,LIT"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real h,v;
+  WindowBegin("MŠŠra e-arve kanalid",DefEInvRcvPrefVClass,CGMnt,RcType);
+  SetWRect(20,80,550,200);
+  h = 80;
+  StaticText(h,v=20,"E-arved",true);
+  ButtonFrame(h,v+=32,183,1,"Vastuv›tu eelistus"); //Bk //##cc
+  RadioButton(h,v,kEInvoiceRcvPreferenceDefault,0,"Eelistus portaalist",flags[0]);
+  RadioButton(h,v+=16,kEInvoiceRcvPreferenceElectronic,0,"E-arve portaali",flags[0]);
+  if (HasLocalization("FIN")==false) then begin
+    RadioButton(h,v+=16,kEInvoiceRcvPreferencePaper,0,"Paberarved",flags[0]); 
+  end;  
+//Bk start   //##ii
+  if (HasLocalization("EST")) then begin //##ii
+    RadioButton(h,v+=16,kEInvoiceRcvPreferenceEMail,0,"E-mail",flags[0]); //##ii
+    RadioButton(h,v+=16,kEInvoiceRcvPreferenceInternetBank,0,"Interneti pank",flags[0]);  //##ii
+  end; //##ii
+//Bk end   //##ii
+  RadioButton(h,v+=16,kEInvoiceRcvPreferenceNone,0,"Ei saada e-arveid",flags[0]); 
+  EndFrame;
+  if (HasLocalization("EST")) then begin
+    h = h + 210; v = 12; //##ii
+    ButtonFrame(h,v+=40,183,1,"Alternatiivne kanal"); 
+    RadioButton(h,v,kEInvoiceRcvPreferenceDefault,0,"Pole kasutusel",flags[1]); 
+    RadioButton(h,v+=16,kEInvoiceRcvPreferenceElectronic,0,"E-arve portaali",flags[1]);
+    RadioButton(h,v+=16,kEInvoiceRcvPreferencePaper,0,"Paberarve",flags[1]);
+    RadioButton(h,v+=16,kEInvoiceRcvPreferenceEMail,0,"E-mail",flags[1]);
+    RadioButton(h,v+=16,kEInvoiceRcvPreferenceInternetBank,0,"Interneti pank",flags[1]); 
+    EndFrame;
+    h = 80; //##ii
+    CheckBox(h,v+=40,0,"E-arve pdf failiga",flags[2]); //##ii
+    CheckBox(h,v+=16,0,"€ra saada e-arveid",flags[3]);  //##ii
+    CheckBox(h,v+=21,0,"Kirjuta Ÿle esimene eelistus (kui on mŠŠratud)",flags[4]);  //##ii
+    CheckBox(h,v+=16,0,"Kirjuta Ÿle alternatiivne eelistus (kui on mŠŠratud)",flags[5]);  //##ii
+  end;
+  EndWindow;
+end;
+
+window EInvRegisterWClass:1
+  wtag("language","EST"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real h,h2,v,vs,vm;
+  WindowBegin("E-arvete teenuste muutmine",EInvRegisterWClass,CGother,RcType);
+  UseView(RcVc);
+  SetWRect(20,80,450,390);
+  h = 50; h2 = 55; v = 50; vs = 20;
+  StaticText(h,v,"Valige vajalikud teenused",false);
+  StaticText(h,v+=vs,"(deaktiveerimeseks v›tke linnuke maha)",false);
+  CheckBox(h,vm=(v+=vs),0,"E-arvete saatmine",flags[1]);
+  CheckBox(h,v+=vs,0,"E-arvete vastuv›tmine (Envoice)",flags[3]);
+  CheckBox(h,v+=vs,0,"Hankija e-arvete vastuv›tmine",flags[2]);
+  ButtonFrame(h2,v+=42,150,3,"Vali operaator");
+  RadioButton(h2,v,0,0,"Omniva",flags[0]);
+  RadioButton(h2,v+=16,1,0,"Fitek",flags[0]);
+  RadioButton(h2,v+=16,2,0,"Envoice",flags[0]);  
+  //EditField(h2+30,v+=32,-40,"E-arve konto",Normal,f2,false,0);
+  HalPushButton(h     ,-50,h+100,-25,"CloseActiveWindowEInv","JŠta");
+  HalPushButton(-h-100,-50,-h   ,-25,"SendActivationRequestsEInv","Muuda");
+  EndWindow; 
+end;
+

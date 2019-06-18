@@ -1,0 +1,593 @@
+external inner function Boolean DisplayAdditionalFields();
+remote inner function Integer MailAcceptanceStatus(LongInt);
+external inner function Boolean IsMoveToCloud(record SetupStatusBlock);
+external inner function Boolean IsMoveToCloudB();
+external inner function Boolean IsCloudControllerClient();
+external inner function string 255 GetCurrentStoreName();
+external inner function Boolean CompaniesInClientMode();
+external inner function Boolean ProductInDemoMode();
+remote inner function string 255 GetCompanyShortCode(string);
+external inner function Boolean AnyModuleAvailable();
+external inner function Boolean AcceptanceStatusColumnTest(string);
+external inner function Integer FlipCharCode(Integer,Integer);
+external inner procedure RateField(real,real,real,string,integer,string,boolean,real,real,string,boolean);
+external inner function boolean AddBicToMasterWindow(integer,var real,var real,real,real,real,real);
+external inner function Boolean IsIntEnabActive(var string,var string,var Boolean,var string);
+external inner function Boolean TouchScreenLookVertical();
+external inner procedure SysEClass_Tool(Integer,var real,var real);
+external inner procedure GTransEClass_Tool(Integer,var real,var real);
+external inner procedure GTrans2EClass_Tool(Integer,var real,var real,var real);
+external inner procedure GBaseEClass_Tool(Integer,var real,var real);
+external inner procedure TransGenVClass_Tool(Integer,var real,var real);
+external inner procedure GetCurUser(var record UserVc);
+external inner procedure JobRClass_ENG();
+external inner function string 60 UserDefined(string,string);
+external inner procedure ItemStatusUserSettings(string,var Boolean,var Boolean,var Boolean,var Boolean,var Boolean,var Boolean,var Boolean,var Boolean,var Boolean,var Boolean,var Boolean,var Boolean,var Boolean,var Boolean);
+external inner function Boolean AllowedInCountry(integer);
+external inner function Integer ResourceWindowResourceType();
+external inner function Boolean ResPlan_Rental();
+external inner function Boolean ResPlan_ProdOperations();
+remote inner function Boolean ReadPOSButtons(string,string,longint,var string,var string,var string,var record POSButtonsVc,var Integer);
+external inner function Boolean TouchScreenLook();
+external inner procedure ExtractObj(string,var Integer,var string);
+external inner function Boolean IsSessionOpen(string,string,Date,Time);
+external inner procedure CntNPTSPaymentCurrencies(var Array string,var Array string,var Array Integer,var Array string,var Integer);
+remote inner procedure CntPOSCurrencies(var Array string,var Array Boolean,var Integer);
+external inner function Boolean CheckOffLineRecords(Boolean);
+external inner function string 60 TileUserDefined(string,Integer,var Integer);
+external inner function Boolean CUVATNrColumn;
+external inner function Integer GetInternetEnablerCountry();
+external inner function Integer CntVarietyCode(Integer,var Array string);
+external inner function Integer VarietyMatMax(Integer);
+external inner function Boolean UseTaxTemplatesforTaxCalc();
+remote inner procedure TablesViewWClassDo(record LocalMachineBlock,string,Array string,Array string,Array string,Array string,Array Integer,var Integer,var LongInt);
+external inner function string 20 GetMenuCode(string);
+external inner procedure DrawModifierButtons(var Integer);
+remote inner procedure ForkLiftQueueArray(string,string,var Array string,var Array string,var Array string,var Array string,var Array val,var Array Integer,var Array string,var Integer,Boolean,LongInt,LongInt,string);
+
+external inner function Boolean DisplayLoginButtons();
+external inner function Integer LoginShortcutsLines(Integer);
+external inner function Integer LoginShortcutsPos(Real,Integer);
+
+external inner procedure DefineTTRRowTypes(Integer);
+external inner function real ItemButtons(string,Integer);
+external inner procedure HWStoreWClassAddProducts(Integer);
+external inner function Boolean HasCharts();
+external inner function Boolean HasNewRegistration();
+external inner function Boolean ActivityIsForAcceptanceOrFYI(record ActVc,Boolean,Boolean);
+// TravelLog
+external inner function Integer LoginShortcuts();
+external inner function Boolean TestConfigurationEnabler(string);
+remote inner function Integer CustomerSalesPaymentTermType(string);
+// POS Standalone
+external inner function Boolean DefCustCodeSetup();
+// in-apps
+external inner function Boolean HasInAppsAvailable();
+external inner function Integer CountCountries();
+
+// Language functions ENG
+external inner function Boolean DisplayLoginKeyPad_ENG();
+external inner function string 255 VATZoneEditFieldLabelENG(Integer);
+external inner function real VATZoneButtonsLabelsENG(real,real,real,real);
+external inner procedure LoginButtons2_ENG(Real,Real);
+external inner procedure FORMDEF_ENG();
+external inner function string 255 DemoMsgWClassTitle_ENG(Boolean,Boolean);
+external inner procedure TBEClassDef_ENG();
+external inner function string 255 VATZoneNameENG();
+external inner procedure TSERW_ENG();
+external inner procedure TSERWNT_ENG();
+external inner procedure TSERWTouch_ENG();
+external inner procedure TSERWTEST_ENG();
+external inner procedure INVFORM_ENG(Boolean);
+external inner procedure DisplayRecordDetails_ENG(LongInt,LongInt,string,date,time,string,string,string,string,string,string,string,string,string,string,string,Integer,string,string,string,val,string,Boolean,string,string);
+external inner procedure DrawPOSInterface_ENG(string,string,record POSButtonsVc,Integer,string,Integer);
+external inner procedure DisplayRecordDetailsCustDisplay_ENG(LongInt,LongInt,string,date,time,string,string,string,string,string,string,Integer,string,string,string,val);
+external inner function string 255 ResDayWClassWindowTitle_ENG();
+external inner function string 255 ResMonWClassWindowTitle_ENG();
+external inner function string 255 RTMonWClassWindowTitle_ENG();
+external inner procedure SetupNightAuditWindowControls_ENG(Boolean);
+external inner procedure CURClassDefinitionENG();
+external inner function real DrawPaymentModesButtons_IV_ENG(real);
+external inner function real FunctionButtons_ENG(string);
+external inner procedure CreditCardWindowHeader_ENG(Boolean,Boolean,Real);
+external inner procedure CreditCardWindowButtons_ENG(string,string,real);
+external inner procedure CreditCardWindowInvoiceDetail_ENG(Real);
+external inner procedure CreditCardWindowDeliveryDetail_ENG(Real);
+external inner function real DrawPaymentModesButtons_ENG();
+external inner procedure DrawBarMenuTiles_ENG(string);
+external inner procedure DrawRestPMOtherPay_ENG();
+external inner procedure DisplayRecordDetailsRA_ENG(LongInt,LongInt,string,date,time,string,string,string,string,string,string,Integer,string,LongInt,Date,string,LongInt,string);
+external inner procedure DrawModifierButtons2_ENG(var integer,var integer);
+external inner procedure OKCancel_ENG();
+external inner procedure DefineElearningURLCacheLClass_ENG();
+external inner procedure DefineElearningURLCacheDClass_ENG();
+external inner function real TravelLogDeductions_ENG(real,real);
+external inner procedure LoginButtons_ENG(Real);
+external inner procedure FORMDEF2_ENG();
+external inner procedure FORMDEF3_ENG();
+external inner procedure ARS2RClass_ENG();
+external inner procedure ALLVATRClass_ENG();
+
+external inner function Boolean IsStandardUnused();
+external inner function Boolean IsEnterprise();
+external inner function Boolean StandardHansa();
+external inner function Boolean HasATOL();
+
+external inner function Boolean HasAccPeriods();
+external inner function Boolean HasAccessGroups();
+external inner function Boolean HasAddFee();
+external inner function Boolean HasApprovals();
+external inner function Boolean HasCCPayments();
+external inner function Boolean HasAdvancedAccounting();
+external inner function Boolean HasAdvancedCRM();
+external inner function Boolean HasAdvancedPricing();
+external inner function Boolean HasAdvancedProduction();
+external inner function Boolean HasAdvancedStock();
+external inner function Boolean HasAged();
+external inner function Boolean HasBar();
+external inner function Boolean HasBase2();
+external inner function Boolean HasBranch();
+external inner function Boolean HasBuyBack();
+external inner function Boolean HasCategories();
+//external inner function Boolean HasConsigmentStock();
+external inner function Boolean HasCommunicator();
+external inner function Boolean HasConsignmentStock();
+external inner function Boolean HasContactClassification();
+external inner function Boolean HasContactRelations();
+external inner function Boolean HasConsolidation();
+external inner function Boolean HasCountryPerCustomer();
+external inner function Boolean HasCreditLimit();
+external inner function Boolean HasCustItem();
+external inner function Boolean HasCustomerSearchKey();
+external inner function Boolean HasDownpayments();
+external inner function Boolean HasDefineColumns();
+external inner function Boolean HasDeliveryAddress();
+external inner function Boolean HasDepartments();
+external inner function Boolean HasETaxDocuments();
+external inner function Boolean HasEInvoicing();
+external inner function Boolean HasEndorsedChecks();
+external inner function Boolean HasExtraNLComment();
+external inner function Boolean HasExtTax();
+external inner function Boolean HasFavouriteActTypes();
+external inner function Boolean HasFiscalPrinter();
+external inner function Boolean HasFormEditor();
+external inner function Boolean HasFreightAdvanced();
+external inner function Boolean HasHideCostPrice();
+external inner function Boolean HasHotelInterface();
+external inner function Boolean HasGuestUserDefined();
+external inner function Boolean HasJewelleryInterface();
+external inner function Boolean HasIncomeAndExpenseBook();
+external inner function Boolean HasIOUChecks();
+external inner function Boolean HasItemClassification();
+external inner function Boolean HasItemGroups();
+external inner function Boolean HasKPIs();
+external inner function Boolean HasLanguages();
+external inner function Boolean HasLimitedAccess();
+external inner function Boolean HasLocalMachines();
+external inner function Boolean HasLoyaltyCards();
+external inner function Boolean HasMailTags();
+external inner function Boolean HasMainPartner();
+external inner function Boolean HasMultiCurrency();
+external inner function Boolean HasMultiLocations();
+external inner function Boolean HasNLBudget();
+external inner function Boolean HasNLBudgetClass();
+external inner function Boolean HasObjects();
+external inner function Boolean HasInvoiceOfficialSerNr();
+external inner function Boolean HasOfficialSerNr();
+external inner function Boolean HasOrderClasses();
+external inner function Boolean HasPreferedOfficialSerNr();
+external inner function Boolean HasNumberSeries();
+external inner function Boolean HasPersons();
+external inner function Boolean HasPocketScreen();
+external inner function Boolean HasPositions();
+external inner function Boolean HasPrepayments();
+external inner function Boolean HasProjects();//very strange tag
+external inner function Boolean HasPriceLists();
+external inner function Boolean HasQualityControl();
+external inner function Boolean HasReconLevel2();
+external inner function Boolean HasReminderLevel();
+external inner function Boolean HasRemoteBackup();
+external inner function Boolean HasResourceDisplayGroups();
+external inner function Boolean HasRussianPrepayment();
+external inner function Boolean HasRetGoodsToSupp();
+external inner function Boolean HasReturnedGoods();
+external inner function Boolean HasRoute();
+external inner function Boolean HasSalesman();
+external inner function Boolean HasSalesmanBonus();
+external inner function Boolean HasSalesGroup();
+external inner function Boolean HasSecondQuantity();
+external inner function Boolean HasSerialNumbers();
+external inner function Boolean HasServerInCloud();
+external inner function Boolean HasSettlementDiscount();
+external inner function Boolean HasSimulations();
+external inner function Boolean hasSimAccruals();
+external inner function Boolean HasSkypeConnection();
+external inner function Boolean HasSIPServerConnection();
+external inner function Boolean HasStrAsSignFType();
+external inner function Boolean HasTouchScreenDevice();
+external inner function Boolean HasTaxMatrix();
+external inner function Boolean HasTestFeatures();
+external inner function Boolean HasMetroTestFeatures();
+external inner function Boolean HasWorkOrders();
+external inner function Boolean HasThrouLocation();
+external inner function Boolean HasTouchScreenLook();
+external inner function Boolean HasTREO();
+external inner function Boolean HasVarieties();
+external inner function Boolean HasVATZone();
+external inner function Boolean HasWithholdingTax();
+external inner function Boolean HasWithholdingTaxAdvanced();
+external inner function Boolean HasWorkOrders();
+
+external inner function Boolean HasStandardCRM();
+external inner function Boolean HasStandardOrganizer();
+external inner function Boolean HasStandardCommunicator();
+
+external inner function Boolean HasEMail();
+external inner function Boolean HasExternalEMail();
+
+external inner function Boolean HasModAT2();
+external inner function Boolean HasModBA();
+external inner function Boolean HasModCheck();
+external inner function Boolean HasModCL();
+external inner function Boolean HasModCO();
+external inner function Boolean HasModCons();
+external inner function Boolean HasModCourses();
+external inner function Boolean HasModCredMan();
+external inner function Boolean HasModCRM();
+external inner function Boolean HasModEDI();
+external inner function Boolean HasModExp();
+external inner function Boolean HasModHotel();
+external inner function Boolean HasModHRM();
+external inner function Boolean HasModIN();
+external inner function Boolean HasModIntStock();
+external inner function Boolean HasModNL();
+external inner function Boolean HasPaymentGateway();
+external inner function Boolean HasModPO();
+external inner function Boolean HasModPOS();
+external inner function Boolean HasModPL();
+external inner function Boolean HasModPOProg();
+external inner function Boolean HasModPP();
+external inner function Boolean HasModProd();
+external inner function Boolean HasModQT();
+external inner function Boolean HasModRent();
+external inner function Boolean HasModRest();
+external inner function Boolean HasModRsrt();
+external inner function Boolean HasModSO();
+external inner function Boolean HasModSL();
+external inner function Boolean HasModSVO();
+external inner function Boolean HasModTS();
+external inner function Boolean HasModWHM();
+external inner function Boolean HasModDI();
+external inner function Boolean UsePostOKButton();
+external inner function Boolean HasBankImport();
+external inner function Boolean HasPLIntegratedWithNL();
+external inner function Boolean HasSLIntegratedWithNL();
+external inner function Boolean HasIntegratedNL();
+external inner function Boolean HasConsStockMoveInvoices();
+
+window TRDClass:2
+  wtag("language","ENG"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real h,v,vm,vs,ve,hpos;
+  Integer f,flipnr,rownr;
+
+  rownr = 2000; //cust
+  ve = 400;
+  WindowBegin("Transaction",TRDClass,CGview,-);
+  if (IsStandardProduct) then begin
+    if (GetFeatureState("HasModNL")==kFeatureTrial) then begin
+      rownr = 10;
+      ve = 360;
+      AutoSizeWindow(false);
+    end else begin
+      Sizeable(-1,-1,0,0);
+    end;
+  end else begin
+    Sizeable(-1,-1,0,0);
+  end;
+  if (HasExtraNLComment) then begin
+    SetWRect(20,80,900,ve);
+  end else begin
+    SetWRect(20,80,740,ve);
+  end;
+  UseView(TRVc);
+  FormName(PrintTRD);
+  ActiveFieldOnNew("TransDate");
+  vs = 20;
+  if (HasNumberSeries) then begin
+    EditField(80,v=6,80,"No.",Normal,Number,false,TSerSClass);
+  end else begin
+    EditField(80,v=6,80,"No.",Normal,Number,false,0);
+  end;
+  EditField(250,v,82,"Trans. Date",Normal,TransDate,false,PasteCurDate);
+  EnterSkip(Comment);
+  EditField(426,v,-40,"Reference",Normal,RefStr,false,0);
+//  EditField(570,v,80,"Doc No.",Normal,SeqNr,false,0);
+  EditField(80,v+=vs,-40,"Text",Normal,Comment,false,0);
+//  CheckBox(450,v,0,"E_xported",Expf);
+  EnterSkip(Math);
+  if (HasBase2) then begin
+    EditField(120,-41,88,"Difference Base 1",ViewOnly,DiffVal,true,0);
+  end else begin
+    EditField(120,-41,88,"Difference",ViewOnly,DiffVal,true,0);
+  end;
+  if (HasBase2 or HasMultiCurrency) then begin
+    EditField(-250,-41,88,"Total",ViewOnly,DSum,true,0);
+    EditField(-157,-41,88,"",ViewOnly,CSum,true,0);
+    if (HasBase2) then begin
+      EditField(120, -21,88,"Difference Base 2",ViewOnly,Diff2Val,true,0);
+      EditField(-250,-21,88,"Total",ViewOnly,DSum2,true,0);
+      EditField(-157,-21,88,"",ViewOnly,CSum2,true,0);
+    end;
+  end else begin
+    EditField(-240,-41,88,"Total",ViewOnly,DSum,true,0);
+    EditField(-147,-41,88,"",ViewOnly,CSum,true,0);
+    if (HasBase2) then begin
+      EditField(120, -21,88,"Difference Base 2",ViewOnly,Diff2Val,true,0);
+      EditField(-250,-21,88,"Total",ViewOnly,DSum2,true,0);
+      EditField(-157,-21,88,"",ViewOnly,CSum2,true,0);
+    end;
+  end;
+  h=4; v=v+(vs+17);
+  if (IsStandardProduct) then begin
+    if (HasMultiCurrency or HasBase2) then begin
+      MatrixBegin(5,vm=v,-50,-46,-,rownr);
+    end else begin
+      MatrixBegin(5,vm=v,-25,-46,-,rownr);
+    end;
+  end else begin
+    MatrixBegin(5,vm=v,-50,-46,-,rownr);
+  end;
+  MatTypedRow(stp);
+  MatOverStrike(ovst);
+  Flip(0);
+  flipnr = 1;
+  Flip(flipnr); flipnr = flipnr + 1;
+  MatCol(1,hpos=32,"Account",0,AccNumber,false,AccSClass); hpos = hpos + 69;
+  if (HasObjects) then begin
+    MatCol(1,hpos,"Objects",0,Objects,false,ObjSClass); hpos = hpos + 140;
+//  MatCol(1,-400,"Short.",0,ACShort,false,ACShortSClass); // what the hell is this? Karl
+    MatCol(1,hpos,"Description",0,Comment,false,0); hpos = hpos + 160; // -349    
+    if (HasExtraNLComment) then begin
+      MatCol(1,hpos,"Additional Description",0,ExtraComment,false,0); hpos = hpos + 130; // -349
+    end;
+  end else begin
+//  MatCol(1,-400,"Short.",0,ACShort,false,ACShortSClass); // what the hell is this? Karl
+    MatCol(1,hpos,"Description",0,Comment,false,0);  hpos = hpos + 130; // -349
+    if (HasExtraNLComment) then begin
+      if (HasLocalization("POL")) then begin
+        MatCol(1,hpos,"Additional Description",0,ExtraComment,false,0); hpos = hpos + 100; // -349
+      end else begin
+        MatCol(1,hpos,"Additional Description",0,ExtraComment,false,0); hpos = hpos + 130; // -349
+      end;
+    end;
+  end;
+  if (HasLocalization("GBR,LTU,POL")) then begin
+    if (HasMultiCurrency) then begin
+      MatCol(1,-240,"Base 1 Debit",0,DebVal,true,0);
+      MatCol(1,-150,"Base 1 Credit",0,CredVal,true,0);
+    end else begin
+      MatCol(1,-240,"Debit",0,DebVal,true,0);
+      MatCol(1,-150,"Credit",0,CredVal,true,0);
+    end;
+    MatCol(1,-60,"#V-Cd#",0,VATCode,false,VATCodeSClass);
+    MatCol(1,-30,"Rvrs",0,RvrsVATCode,false,VATCodeSClass);
+  end else begin
+    if (HasMultiCurrency) then begin
+      MatCol(1,-210,"Base 1 Debit",0,DebVal,true,0);
+      MatCol(1,-120,"Base 1 Credit",0,CredVal,true,0);
+    end else begin
+      MatCol(1,-210,"Debit",0,DebVal,true,0);
+      MatCol(1,-120,"Credit",0,CredVal,true,0);
+    end;
+    MatCol(1,-30,"#V-Cd#",0,VATCode,false,VATCodeSClass);
+  end;
+  MatText(2,32,"Signature",true);
+  MatColTL(2,108,"",0,M4Code,ViewOnly,0,Sign,false,0);
+  MatText(2,160,"Old Trans. Date",true);
+  MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
+  MatText(3,32,"Corrected by Transaction",true);
+  MatColTL(3,215,"",0,M4AppCode,ViewOnly,0,CorrNr,false,0);
+  MatText(3,315,"Reg.Date",true);
+  MatCol(3,385,"",0,CorrDate,false,0);
+  MatText(4,32,"Correction to Transaction",true);
+  MatColTL(4,215,"",0,M4AppCode,Normal,0,CorrNr,false,0);
+  if (HasBase2) then begin
+    Flip(flipnr); flipnr = flipnr + 1;
+    MatCol(1,hpos=32,"Account",0,AccNumber,false,AccSClass); hpos = hpos + 69;
+    if (HasObjects) then begin
+      MatCol(1,hpos,"Objects",0,Objects,false,ObjSClass); hpos = hpos + 140;
+    end else begin
+      MatCol(1,hpos,"Description",0,Comment,false,0); hpos = hpos + 160;
+    end;
+    MatCol(1,-400,"Base 1 Debit",0,DebVal,true,0);
+    MatCol(1,-300,"Base 1 Credit",0,CredVal,true,0);
+    MatCol(1,-200,"Base 2 Debit",0,DebVal2,true,0);
+    MatCol(1,-100,"Base 2 Credit",0,CredVal2,true,0);
+    MatText(2,32,"Signature",true);
+    MatCol(2,108,"",0,Sign,false,0);
+    MatText(2,160,"Old Trans. Date",true);
+    MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
+    MatText(3,32,"Corrected by Transaction",true);
+    MatColTL(3,215,"",0,M4AppCode,ViewOnly,0,CorrNr,false,0);
+    MatText(3,315,"Reg.Date",true);
+    MatCol(3,385,"",0,CorrDate,false,0);
+    MatText(4,32,"Correction to Transaction",true);
+    MatColTL(4,215,"",0,M4AppCode,Normal,0,CorrNr,false,0);
+  end;
+  if (HasMultiCurrency) then begin
+    Flip(flipnr); flipnr = flipnr + 1;
+    MatCol(1,hpos=32,"Account",0,AccNumber,false,AccSClass); hpos = hpos + 69;
+    if (HasObjects) then begin
+      MatCol(1,hpos,"Objects",0,Objects,false,ObjSClass); hpos = hpos + 140;
+    end else begin
+      MatCol(1,hpos,"Description",0,Comment,false,0); hpos = hpos + 160;
+    end;
+    if (HasBase2) then begin
+      MatCol(1,-410,"Base 1 Debit",0,DebVal,true,0);
+      MatCol(1,-330,"Base 1 Credit",0,CredVal,true,0);
+    end else begin
+      MatCol(1,-410,"Debit",0,DebVal,true,0);
+      MatCol(1,-330,"Credit",0,CredVal,true,0);
+    end;
+    MatCol(1,-250,"Currency",0,Curncy,false,CurncyCodeSClass);
+    MatCol(1,-200,"Currency Debit",0,CurDebVal,true,0);
+    MatCol(1,-100,"Currency Credit",0,CurCredVal,true,0);
+    MatText(2,32,"Signature",true);
+    MatCol(2,108,"",0,Sign,false,0);
+    MatText(2,160,"Old Trans. Date",true);
+    MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
+    MatText(3,32,"Corrected by Transaction",true);
+    MatColTL(3,215,"",0,M4AppCode,ViewOnly,0,CorrNr,false,0);
+    MatText(3,315,"Reg. Date",true);
+    MatCol(3,385,"",0,CorrDate,false,0);
+    MatText(4,32,"Correction to Transaction",true);
+    MatColTL(4,215,"",0,M4AppCode,Normal,0,CorrNr,false,0);
+    Flip(flipnr); flipnr = flipnr + 1;
+    MatCol(1,hpos=32,"Account",0,AccNumber,false,AccSClass); hpos = hpos + 69;
+    if (HasObjects) then begin
+      MatCol(1,hpos,"Objects",0,Objects,false,ObjSClass);  hpos = hpos + 140;
+    end else begin
+      MatCol(1,hpos,"Description",0,Comment,false,0); hpos = hpos + 160;
+    end;
+    if (HasBase2) then begin
+      MatCol(1,-400,"Currency",0,Curncy,false,CurncyCodeSClass);
+      MatCol(1,-350,"Base Rate 1",0,BaseRate1,true,0);
+      MatCol(1,-280,"Base Rate 2",0,BaseRate2,true,0);
+    end else begin
+      MatCol(1,-300,"Currency",0,Curncy,false,CurncyCodeSClass);
+    end;
+    MatCol(1,-210,"From Rate",0,FrRate,true,0);
+    MatCol(1,-140,"To Rate B.1",0,ToRateB1,true,0);
+    if (HasBase2) then begin
+      MatCol(1,-70,"To Rate B.2",0,ToRateB2,true,0);
+    end;
+    MatText(2,32,"Signature",true);
+    MatCol(2,108,"",0,Sign,false,0);
+    MatText(2,160,"Old Trans. Date",true);
+    MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
+    MatText(3,32,"Corrected by Transaction",true);
+    MatColTL(3,215,"",0,M4AppCode,ViewOnly,0,CorrNr,false,0);
+    MatText(3,315,"Reg.Date",true);
+    MatCol(3,385,"",0,CorrDate,false,0);
+    MatText(4,32,"Correction to Transaction",true);
+    MatColTL(4,215,"",0,M4AppCode,Normal,0,CorrNr,false,0);
+  end;
+  if (IsEnterprise) then begin
+    Flip(flipnr); flipnr = flipnr + 1;
+    MatCol(1,32,"T",0,Typ,false,SetSClass);
+    MatCol(1,52,"Ser. No.",0,SerNr,false,ARSClass);
+    MatCol(1,112,"Due Date",0,DueDate,false,PasteCurDate);
+    MatCol(1,184,"Company",0,CompCode,false,CUSClass);
+    if (HasExtraNLComment) then begin
+      MatCol(1,-550,"Description",0,Comment,false,0);
+      MatCol(1,-410,"Additional Description",0,ExtraComment,false,0);
+    end else begin
+      MatCol(1,-400,"Description",0,Comment,false,0);
+    end;
+    MatCol(1,-290,"Account",0,AccNumber,false,AccSClass);
+    MatCol(1,-210,"Debit",0,DebVal,true,0);
+    MatCol(1,-120,"Credit",0,CredVal,true,0);
+    MatCol(1,-30,"#V-Cd#",0,VATCode,false,VATCodeSClass);
+    MatText(2,32,"Signature",true);
+    MatCol(2,108,"",0,Sign,false,0);
+    MatText(2,160,"Old Trans. Date",true);
+    MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
+    MatText(3,32,"Corrected by Transaction",true);
+    MatColTL(3,215,"",0,M4AppCode,ViewOnly,0,CorrNr,false,0);
+    MatText(3,315,"Reg.Date",true);
+    MatCol(3,385,"",0,CorrDate,false,0);
+    MatText(4,32,"Correction to Transaction",true);
+    MatColTL(4,215,"",0,M4AppCode,Normal,0,CorrNr,false,0);
+    Flip(flipnr); flipnr = flipnr + 1;
+    MatCol(1,32,"Account",0,AccNumber,false,AccSClass);
+    if (HasObjects) then begin
+      MatCol(1,98,"Objects",0,Objects,false,ObjSClass);
+    end;
+    if (HasExtraNLComment) then begin
+      MatCol(1,-590,"Description",0,Comment,false,0);
+      MatCol(1,-450,"Additional Description",0,ExtraComment,false,0);
+    end else begin
+      MatCol(1,-420,"Description",0,Comment,false,0);
+    end;
+    MatCol(1,-330,"Nominal",0,NomVal,true,0);
+    MatCol(1,-230,"Debit",0,DebVal,true,0);
+    MatCol(1,-130,"Credit",0,CredVal,true,0);
+    MatCol(1,-30,"Corr",0,CorspSer,false,0);
+    MatText(2,32,"Signature",true);
+    MatCol(2,108,"",0,Sign,false,0);
+    MatText(2,160,"Old Trans. Date",true);
+    MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
+    MatText(3,32,"Corrected by Transaction",true);
+    MatColTL(3,215,"",0,M4AppCode,ViewOnly,0,CorrNr,false,0);
+    MatText(3,315,"Reg.Date",true);
+    MatCol(3,385,"",0,CorrDate,false,0);
+    MatText(4,32,"Correction to Transaction",true);
+    MatColTL(4,215,"",0,M4AppCode,Normal,0,CorrNr,false,0);
+    Flip(flipnr); flipnr = flipnr + 1;
+    MatCol(1,32,"Account",0,AccNumber,false,AccSClass);
+    if (HasObjects) then begin
+      MatCol(1,98,"Objects",0,Objects,false,ObjSClass);
+    end;
+    if (HasExtraNLComment) then begin
+      MatCol(1,-550,"Description",0,Comment,false,0);
+      MatCol(1,-380,"Additional Description",0,ExtraComment,false,0);
+    end else begin
+      MatCol(1,-420,"Description",0,Comment,false,0);
+    end;
+    if (StandardHansa==false) then begin
+      MatCol(1,-260,"Tax Account",0,TAccNumber,false,TAccSClass);
+      MatCol(1,-180,"Quantity",0,Qty,true,0);
+      MatCol(1,-100,"Type",0,SAFTType,false,SetSClass);
+    end;
+    MatText(2,32,"Signature",true);
+    MatCol(2,108,"",0,Sign,false,0);
+    MatText(2,160,"Old Trans. Date",true);
+    MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
+    MatText(3,32,"Corrected by Transaction",true);
+    MatColTL(3,215,"",0,M4AppCode,ViewOnly,0,CorrNr,false,0);
+    MatText(3,315,"Reg.Date",true);
+    MatCol(3,385,"",0,CorrDate,false,0);
+    MatText(4,32,"Correction to Transaction",true);
+    MatColTL(4,215,"",0,M4AppCode,Normal,0,CorrNr,false,0);
+  end;
+  InsertRowTest;
+  DeleteRowTest;
+  EndMatrix;
+  vs = 20;
+  v = vm + 1;
+  if (flipnr>2) then begin
+    for (f=1;f<flipnr;f=f+1) begin
+      VTab(-35,v,-16,v+vs,ToolFlip,f,chr(asc("A") + f - 1));
+      v = v + vs;
+    end;
+  end;
+  if (GuiType==kGuiMetro) then begin // Temporarily disabled on Windows 8
+    SpecialMenu("Balance Transaction",'B',0,"BalanceTRDsm");
+    SpecialMenu("Swap Debit & Credit",' ',1,"SwapDCTRDsm");
+    SpecialMenu("Correction Mark",' ',3,"CorrectionMarkTRDsm");
+    SpecialMenu("Open Subsystem Record",'t',6,"OpenSubsystemTRDsm");
+    if (HasMultiCurrency) then begin
+      SpecialMenu("Update Currency Rates",' ',7,"UpdCurRateTRDsm");
+    end;
+  end else begin
+    SpecialMenu("Balance Transaction",'B',0,"BalanceTRDsm");
+    SpecialMenu("Swap Debit & Credit",' ',1,"SwapDCTRDsm");
+//    if (HasIntegratedNL) then begin
+    if (true) then begin
+      SpecialMenu("Update Mark",' ',2,"UpdateMarkTRDsm");
+      SpecialMenu("Correction Mark",' ',3,"CorrectionMarkTRDsm");
+    end;
+    SpecialMenu("Calculate Field",'F',4,"CalcFieldTRDsm");
+    SpecialMenu("Change Sign",' ',5,"ChangeSignTRDsm");
+    if (HasIntegratedNL) then begin
+      SpecialMenu("Open Subsystem Record",'t',6,"OpenSubsystemTRDsm");
+    end;
+    if (HasMultiCurrency) then begin
+      SpecialMenu("Update Currency Rates",' ',7,"UpdCurRateTRDsm");
+    end;
+    SpecMenuGroup("",kSpecMenuGroupTypeExtendedPlusMenu,0);
+    SpecialMenu("Add Account",' ',0,"AddAccountQTDsm");
+  end;
+  EndWindow;
+end;

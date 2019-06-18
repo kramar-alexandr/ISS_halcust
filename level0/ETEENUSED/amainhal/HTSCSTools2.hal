@@ -1,0 +1,2010 @@
+external function Boolean ValidEInvoiceData2(record IVVc,record CUVc,var LongInt,var string);
+external updating procedure CreateVEIVFromIV(record IVVc,record CUVc,Boolean);
+external function Boolean HasEInvoicing();
+external updating procedure RecreateEInvoiceAttachments(record IVVc);
+external procedure SendAsyncServiceRequestToHansaMail(string,area,string);
+external updating function Boolean HTSCSRequestSuppplierEInvoice();
+external updating function Boolean HTSCSSendRecordFromEPaymentQueue(record EPaymentQueVc);
+external updating function Boolean ReadExchangeRateFromBank(Area,Date,Integer,Integer,var Integer,var string,Date);
+external updating function Boolean ServiceRequestAsync(string,string,Boolean,area,string);
+external updating procedure DBStatusStopReason(Integer,string);
+external procedure LookupServiceAsync(string,string,Boolean);
+external updating procedure StopSendingERecords(LongInt,string);
+external updating function Boolean HTSCSSendRecordFromEInvoiceQueue(record EInvoiceQueVc);
+external updating procedure RegisterForEInvoicing();
+external function Boolean CheckInternetEnabler();
+external updating function Boolean HTSCSSendSuppplierRecordStatuses();
+external updating procedure HTSCSRequestStatusFromTXServer(record ServiceCacheVc);
+external function Boolean IsHansaWorldCustomer(string);
+external updating function Boolean HTSCSSEInvQueueForCompany(var Integer);
+external procedure ReadTXServiceReply(var record TXServiceReplyVc,var Area,Boolean);
+external updating function Boolean GetExchangeRateFromBank(record RcVc,Boolean,var Integer,var string);
+external procedure SendFunctionVersion(string,string,var Area);
+external updating procedure SaveERecordStatus(string,string,string,string,Integer,string,string,string,LongInt,Integer,string,string);
+external function string 100 CreateCompID();
+external procedure SendEOLParameter(var Area);
+external procedure SendTextParameter(string,var Area);
+external updating procedure SendAsyncServiceRequestNew(string,area,string,Boolean);
+external updating procedure UpdateEPaymentQue(LongInt,string,Integer);
+external procedure RecordActionIV_PrintOrg(var record IVVc,string,string,Integer,Boolean);
+external function string 255 GetEInvPartner();
+external function Integer GetCodeFromCompanyCode(Integer);
+
+global
+function Integer EInvoiceingEnabled(Integer CAEAFlag,string currency,record CUVc CUr)
+begin
+  Integer res;
+  record EInvoiceBlock EIb;
+
+  res = 0;
+  if (IsStandardProduct) then begin
+    if (HasEInvoicing==false) then begin
+      res = 1;
+    end;
+  end else begin
+    BlockLoad(EIb);  
+    if (HasLocalization("ARG")) then begin
+  //    if (EIb.OutArgEInvoices!=0) and (CAEAFlag!=0) then begin
+  //    end;
+    end else begin
+      if (EIb.OutEInvoices==0) and (EIb.DefaultEBehave==0) then begin res = 1; end;//not all pls;
+    end;
+  end;
+  if (res!=0) then begin
+    goto LEInvoiceingEnabled;
+  end;
+  
+  if (CUr.eInvStop!=0) then begin res = 2; end;
+  if (res==0) then begin
+    switch (CUr.eInvRcvPref) begin
+      case kEInvoiceRcvPreferenceNone: 
+        res = 2;
+      case kEInvoiceRcvPreferenceDefault: 
+        if (EIb.RcvInvoicePref==kEInvoiceRcvPreferenceNone) then begin res = 2; end;
+    end;
+  end;
+LEInvoiceingEnabled:;  
+  EInvoiceingEnabled = res;
+  return;
+end;
+
+global
+function Integer EInvoiceForCustomer3(Integer CAEAFlag,string currency,record CUVc CUr)
+begin
+  Integer res;
+  record EInvoiceBlock EIb;
+  record InternetEnablerBlock IEb;
+  string 255 basecur1;
+
+  res = EInvoiceingEnabled(CAEAFlag,currency,CUr);
+   if (res!=0) then begin
+    goto LEInvoiceForCustomer3;
+  end;
+//cust - begin: TS tmp
+/* //compiling error
+  switch (SystemMode) begin
+    case kSystemModeRestricted:
+      res = 3;
+      goto LEInvoiceForCustomer3;
+    case kSystemModeArchive:
+      res = 4;
+      goto LEInvoiceForCustomer3;
+  end;
+*/
+//cust - end
+  if (CheckInternetEnabler==false) then begin
+    res = 5;
+    goto LEInvoiceForCustomer3;
+  end;
+  BlockLoad(IEb);  
+  
+//    if (CUr.RcvInvoicePref==kEInvoiceRcvPreferenceInternal) then begin res = false; end;
+  if (IsHansaWorldCustomer(IEb.CustomerCode)==false) then begin//not for ourselves
+    if (CUr.ExportFlag!=0) then begin res = 6; end;
+  end;
+LEInvoiceForCustomer3:;  
+  EInvoiceForCustomer3 = res;
+  return;
+end;
+
+
+global
+function Boolean EInvoiceForCustomer(Integer CAEAFlag,string currency,record CUVc CUr)
+begin
+  Boolean res;
+  record EInvoiceBlock EIb;
+  record InternetEnablerBlock IEb;
+  string 255 basecur1;
+
+  res = EInvoiceingEnabled(CAEAFlag,currency,CUr)==0;
+   if (res==false) then begin
+    res = false;
+    goto LInvoiceToEInvoiceQueueTest;
+  end;
+//cust - begin: TS tmp
+/* //compiling error
+  switch (SystemMode) begin
+    case kSystemModeRestricted:
+      res = false;
+      goto LInvoiceToEInvoiceQueueTest;
+    case kSystemModeArchive:
+      res = false;
+      goto LInvoiceToEInvoiceQueueTest;
+  end;
+  if (CheckInternetEnabler==false) then begin
+    res = false;
+    goto LInvoiceToEInvoiceQueueTest;
+  end;
+*/
+//cust - end
+  BlockLoad(IEb);  
+  
+//    if (CUr.RcvInvoicePref==kEInvoiceRcvPreferenceInternal) then begin res = false; end;
+/* //cust TS 2016/05
+  if (IsHansaWorldCustomer(IEb.CustomerCode)==false) then begin//not for ourselves
+    if (CUr.ExportFlag!=0) then begin res = false; end;
+  end;
+*/
+LInvoiceToEInvoiceQueueTest:;  
+  EInvoiceForCustomer = res;
+  return;
+end;
+
+
+global
+function Boolean EInvoiceForCustomer2(Integer CAEAFlag,string custcode,string currency,var record CUVc CUr)
+begin
+  Boolean res;
+  record EInvoiceBlock EIb;
+  record InternetEnablerBlock IEb;
+  string 255 basecur1;
+
+  res = true;
+  BlockLoad(EIb);  
+  BlockLoad(IEb);  
+  
+  CUr.Code = custcode;
+  ReadFirstMain(CUr,1,true);
+  res = EInvoiceForCustomer(CAEAFlag,currency,CUr);
+  EInvoiceForCustomer2 = res;
+  return;
+end;
+
+global
+function Boolean PDFFileForCustomerEInvoice(string custcode,string currency)
+begin
+  Boolean res;
+  record EInvoiceBlock EIb;
+  record CUVc CUr;
+
+  if (HasLocalization("FIN")) then begin 
+    res = true; 
+    goto LPDFFileForCustomerEInvoice;
+  end;
+  if (EInvoiceForCustomer2(0,custcode,currency,CUr)) then begin 
+    res = CUr.eInvAttachPDF!=0;
+    if (res==false) then begin
+      if (CUr.eInvRcvPref==0) then begin
+        BlockLoad(EIb);  
+        res = EIb.AttachPDFtoElectronicInvoice!=0;
+      end;
+    end;
+    if (HasLocalization("FIN")) then begin 
+      res = true; 
+    end;
+  end;
+LPDFFileForCustomerEInvoice:;  
+  PDFFileForCustomerEInvoice = res;
+  return;
+end;
+
+global
+function Boolean HasEInvoiceExpired()
+begin
+  Boolean res;
+  record LicensesVc Lr;
+  
+  res = true;
+  Lr.Function = "HasEInvoicing";
+  if (ReadFirstKey("ActiveFunction",Lr,1,true)) then begin 
+    if (Lr.UsedQty<Lr.Qty) then begin
+      res = false;
+    end;
+  end;
+  HasEInvoiceExpired = res;
+  return;
+end;
+
+global
+updating function Boolean EInvoiceQueTransaction(record IVVc IVr,string recname,Integer status,LongInt versionnr)
+BEGIN
+  Boolean res;
+  record EInvoiceQueVc EInvoiceQuer;
+  record EInvoiceQueVc oldEInvoiceQuer;  
+  record CUVc CUr;
+  record EInvoiceBlock EIb;
+  string 255 basecur1;
+  string 255 fname,docname,filename;
+    
+  if (IsStandardProduct) then begin
+    if (versionnr==0) then begin
+      if (HasEInvoicing==false) then begin
+        goto LEInvoiceQueTransaction; 
+      end;
+      if (HasEInvoiceExpired) then begin
+        goto LEInvoiceQueTransaction; 
+      end;
+    end else begin
+      if (CountRecords("EInvoiceQueVc")<=0) then begin
+        goto LEInvoiceQueTransaction; 
+      end;
+    end;
+  end;
+  BLockLoad(EIb);
+  CUr.Code = IVr.CustCode;
+  ReadFirstMain(CUr,1,true);
+  if (CUr.eInvRcvPref==kEInvoiceRcvPreferenceInternal) then begin
+    docname = "InvForm";
+    if (IVr.InvType==kInvoiceTypeCash) then begin docname = "CashInvForm"; end;
+    if (IVr.InvType==kInvoiceTypeCredit or IVr.InvType==kInvoiceTypeCreditSpecialSales) then begin docname = "CredInvForm"; end;
+    if (IVr.InvType==kInvoiceTypeInterest) then begin docname = "IIInvForm"; end;
+    if ((nonblank(IVr.PRCode)) and (IVr.InvType==kInvoiceTypeNormal or IVr.InvType==kInvoiceTypeNormalSpecialSales)) then begin
+      docname = "ProjInvForm";
+    end;
+    fname = "tmp/" & IVr.SerNr & ".pdf";
+    SetDocumentFilename(fname);
+    SetMedia(mtPdf);
+    RecordActionIV_PrintOrg(IVr,"","",0,true);
+    SetDocumentFilename("");
+    RecordLinkFile(fname,0,IVr,CurrentCompany);
+    CreateVEIVFromIV(IVr,CUr,true);
+    goto LEInvoiceQueTransaction; 
+  end else begin
+    if (EInvoiceForCustomer(IVr.CAEAFlag,IVr.CurncyCode,CUr)==false) then begin 
+      goto LEInvoiceQueTransaction; 
+    end;
+  end;
+  RecreateEInvoiceAttachments(IVr);
+  if (IVr.CAEAFlag!=0) then begin
+    filename = "ArgIVVc";
+  end else begin
+   if (HasLocalization("EST")) and (EIb.OutEstEInvoices!=0) then begin
+      filename = "estIVVc";
+    end else begin
+      filename = "IVVc";
+    end;
+  end;
+  EInvoiceQuer.FileName = filename;
+  EInvoiceQuer.RecSerNr = IVr.SerNr;
+  EInvoiceQuer.Status = status;
+  EInvoiceQuer.FileNameDesc = recname;
+  EInvoiceQuer.CreationDate = CurrentDate;
+  EInvoiceQuer.CreationTime = CurrentTime;
+  EInvoiceQuer.SerNr = NextSerNr("EInvoiceQueVc",EInvoiceQuer.CreationDate,-1,false,"");            
+  EInvoiceQuer.CompID = CreateCompID;
+  EInvoiceQuer.RecVersionNr = versionnr;
+  if (EInvoiceQuer.SerNr>0) then begin
+    oldEInvoiceQuer.FileName = filename;
+    oldEInvoiceQuer.RecSerNr = IVr.SerNr;
+    oldEInvoiceQuer.RecVersionNr = versionnr;
+    if (ReadFirstKey("FileName",oldEInvoiceQuer,3,true)==false) then begin        
+      if (RecordStore(EInvoiceQuer,1)) then begin
+      end;
+      res = true;
+    end;
+  end;
+LEInvoiceQueTransaction:;  
+  EInvoiceQueTransaction = res;
+  RETURN;
+END;
+
+global
+updating procedure LiveDBBlessWClassRemote()
+begin
+  record DBERecordsBlock DBERb;
+  Area a_req;
+  record InternetEnablerBlock IEb;
+  record MyIPAddrBlock MYIPb;
+
+  BlockLoad(DBERb);
+
+//Trace("1.LiveDBBlessWClassRemote "," DBERb.AutoDBStatus " & DBERb.AutoDBStatus);//jjtmp
+
+  if (DBERb.AutoDBStatus==0) then begin
+    BlockLoad(IEb);
+    BlockLoad(MYIPb);
+    SendTextParameter(MYIPb.PINCode,a_req);
+    SendTextParameter(DatabaseID,a_req);
+    SendTextParameter(CurrentUser,a_req);
+    SendEOLParameter(a_req);
+  //  SendAsyncServiceRequestNew("BLESSDATABASE",a_req,"HTSBlessDatabaseReply",false);
+
+//Trace("2.LiveDBBlessWClassRemote "," DBERb.AutoDBStatus " & DBERb.AutoDBStatus);//jjtmp
+
+    if (ServiceRequestAsync("BLESSDATABASE","",true,a_req,"HTSBlessDatabaseReply")==false) then begin
+    end;
+  end else begin  
+    DBERb.StopReason = "";
+    DBERb.DBStatus = 1;
+    BlockStore(DBERb);
+  end;
+  return;
+end;
+
+global
+updating procedure HTSBlessDatabaseReply(Area a_reply,Area replyheader,Boolean timedout)
+begin
+  LongInt rerror;
+  string 255 rerrordesc,curuser,DBID;
+  Integer DBIDf;
+  record DBERecordsBlock DBERb;
+  LongInt l;
+  record TXServiceReplyVc TXSrvReplyr;
+
+//Trace("1.HTSBlessDatabaseReply ","");//jjtmp
+
+  if ((timedout) or (GetAreaLength(a_reply)<=0)) then begin
+    LookupServiceAsync("BLESSDATABASE","",true);
+  end else begin
+    ReadTXServiceReply(TXSrvReplyr,a_reply,true);
+    rerror = TXSrvReplyr.ErrorCode;
+    rerrordesc = TXSrvReplyr.ErrorDescription;
+
+    DBIDf = StringToInt(GetTabTextFromArea(0,0,a_reply));  
+    curuser = GetTabTextFromArea(0,1,a_reply);
+    DBID = GetTabTextFromArea(0,2,a_reply);
+
+//Trace("2.HTSBlessDatabaseReply DBID " & DBID,"");//jjtmp
+
+    if (DBIDf!=0) then begin  
+      BlockLoad(DBERb);
+      DBERb.DBStatus = 1;    
+      DBERb.DatabaseID = DBID;
+      if (blank(DBERb.DatabaseID)) then begin
+        DBERb.DatabaseID = DatabaseID;
+      end;
+      BlockStore(DBERb);
+    end;
+    if (rerror!=0) or (DBIDf==0) then begin
+      LogText(rerror,"BLESSDATABASE error " & rerrordesc);
+    end;
+  end;
+  return;
+end;
+
+global
+updating procedure TestDBBlessWClassRemote()
+begin
+  record DBERecordsBlock DBERb;
+  
+  BlockLoad(DBERb);
+  DBERb.DBStatus = 2;
+  BlockStore(DBERb);
+  return;
+end;
+
+procedure AddTag_String(string tag,string attrib,string attribvalue,string value,Area a)
+begin
+  if (blank(attrib)) then begin
+    AddTextToArea("<" & tag & ">",a);
+  end else begin
+    AddTextToArea("<" & tag & " " & attrib & "=" & """" & attribvalue & """" & ">",a);
+  end;
+  AddTextToArea(ConvertStringToCodePage("ISO-8859-1",value),a);
+  AddTextToArea("</" & tag & ">",a);
+  return;
+end;
+
+procedure AddTag_String2(string tag,string attrib,string attribvalue,string attrib2,string attribvalue2,string value,Area a)
+begin
+  if (blank(attrib)) then begin
+    AddTextToArea("<" & tag & ">",a);
+  end else begin
+    AddTextToArea("<" & tag,a);
+    AddTextToArea(" " & attrib & "=" & """" & attribvalue & """",a);
+    AddTextToArea(" " & attrib2 & "=" & """" & attribvalue2 & """",a);    
+    AddTextToArea(">",a);
+  end;
+  AddTextToArea(ConvertStringToCodePage("ISO-8859-1",value),a);
+  AddTextToArea("</" & tag & ">",a);
+  return;
+end;
+
+global
+procedure HTSDirDebtSEBMn(record RcVc RepSpec,var Area a,var Array LongInt ainvnr,var LongInt ainvcnt)
+begin
+  record IVVc IVr;
+  Boolean TrHs,testf;
+  LongInt friv,toiv;
+  string 20 frcust,tocust;
+  string 255 tstr,index;
+  record CUVc CUr;
+  record CYBlock CYb;
+  record EInvoiceQueVc EInvoiceQuer;
+  record ERecordStatusVc ERSr;
+  record InternetEnablerBlock IEb;
+  
+  BlockLoad(IEb);  
+  BlockLoad(CYb);
+  friv = FirstInRange(RepSpec.f1,10);
+  toiv = LastInRange(RepSpec.f1,10);
+  frcust = FirstInRange(RepSpec.f2,20);
+  tocust = LastInRange(RepSpec.f2,20);
+
+  AddTextToArea("<?xml version=""1.0"" encoding="" iso-8859-1""?>",a);
+  AddTextToArea("<Directs>",a);
+  AddTextToArea("<Payee>",a);
+  AddTag_String("Name","","",CYb.CompName,a);
+  AddTag_String("Regnr","","",CYb.OrgNr,a);
+  AddTag_String("Account","currency","EEK",CYb.Bank1,a);
+  AddTextToArea("</Payee>",a);
+  AddTextToArea("<Order_list>",a);
+  index = "InvDate";
+  if (nonblank(RepSpec.f1)) then begin
+    index = "SerNr";
+  end;
+  IVr.InvDate = RepSpec.sStartDate;
+  IVr.SerNr = friv;
+  TrHs = true;
+  while (LoopKey(index,IVr,1,TrHs)) begin
+    if (nonblank(RepSpec.f1)) then begin
+      if (IVr.SerNr>toiv) then begin TrHs = false; end;
+    end else begin
+      if (IVr.InvDate>RepSpec.sEndDate) then begin TrHs = false; end;
+    end;
+    if (TrHs) then begin
+      testf = true;
+      if (blank(RepSpec.f1)) then begin
+        if (DateInRange(IVr.InvDate,RepSpec.sStartDate,RepSpec.sEndDate)==false) then begin
+          testf = false;
+        end;
+      end;
+      if (nonblank(RepSpec.f2)) then begin
+        if ((IVr.CustCode<frcust) or (IVr.CustCode>tocust)) then begin testf = false; end;
+      end;  
+      if (nonblank(RepSpec.FirstAcc)) then begin
+        if (IVr.PayDeal!=RepSpec.FirstAcc) then begin testf = false; end;
+      end;  
+      if (testf) then begin
+        if (RepSpec.flags[0]==0) then begin
+          ERSr.Type = 1;
+          ERSr.FileName = "IVVc";
+          ERSr.CustID = IEb.CustomerCode;
+          ERSr.CustSerNr = IVr.SerNr;
+          testf = !ReadfirstKey("Type",ERSr,4,true);
+        end;
+      end;
+      if (testf) then begin
+        CUr.Code = IVr.CustCode;
+        if (ReadFirstMain(CUr,1,true)) then begin end;
+/*        
+        AddTextToArea("<Payee>",a);
+        AddTag_String("Name","","",IVr.Addr0,a);
+        AddTag_String("Regnr","","",IVr.VATNr,a);
+        AddTag_String("Account","currency",IVr.CurncyCode,IVr.BankCode,a);
+        AddTextToArea("</Payee>",a);
+*/        
+
+        AddTextToArea("<Order ID=" & IVr.SerNr & ">",a);
+        AddTag_String2("Payer","Name",IVr.Addr0,"Regnr",CUr.RegNr1,"",a);
+        AddTag_String("Amount","currency",IVr.CurncyCode,ValToString(IVr.Sum4,M4Val,"",".",0),a);
+        AddTag_String("Reference1","","",IVr.RefStr,a);
+        AddTag_String("Reference2","","","",a);
+        AddTag_String("Description","","",IVr.InvComment,a);
+        AddTag_String("Paydate","","",DateToString(IVr.PayDate,"DD/MM/YYYY"),a);        
+        AddTextToArea("</Order>",a);
+        ainvnr[ainvcnt] = IVr.SerNr;
+        ainvcnt = ainvcnt + 1;
+      end;
+    end;
+  end;
+  AddTextToArea("</Order_list>",a);
+  AddTextToArea("<Contract_list/>",a);
+  AddTextToArea("</Directs>",a);
+
+//  CreateFile("jjHTSDirDebtSEBMn.txt");
+//  CloseFile;
+//  WriteAreaToFile(a,"jjHTSDirDebtSEBMn.txt",0);
+
+  return;
+end;
+
+global
+updating procedure StoreERecordStatusesDirDebt(Array LongInt ainvnr,LongInt ainvcnt)
+begin
+  LongInt i;
+  record IVVc IVr;
+  record InternetEnablerBlock IEb;
+  
+  BlockLoad(IEb);
+  for (i=0;i<ainvcnt;i=i+1) begin
+    IVr.SerNr = ainvnr[i];
+    if (ReadFirstMain(IVr,1,true)) then begin
+      SaveERecordStatus("IVVc",IVr.SerNr,IEb.CustomerCode,USetStr(20804),2,CreateCompID,"",IVr.CustCode,0,1,"","");
+    end;
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSResetStopEInvoicesIdleTask(string arg)
+begin
+  Integer i,rwcnt;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  Boolean stopidletaskf;
+  Time t;
+  
+  stopidletaskf = true;
+  oldcomp = CurrentCompany;  
+  BlockLoad(Compb);
+  rwcnt = MatRowCnt(Compb);
+  for (i=0;i<rwcnt;i=i+1) begin
+    MatRowGet(Compb,i,Comprw);
+    if (blank(Comprw.TCPIP)) then begin
+      if (SetServerCompanyCode(Comprw.CompCode)) then begin
+        BlockLoad(EIb);
+        if (EIb.StopEInvoices!=0) then begin
+          EIb.StopEInvoices = 0;
+          BlockStore(EIb);
+        end;
+        stopidletaskf = false;
+      end;
+    end;
+  end;
+  ResetCompany(oldcomp);
+  if (stopidletaskf) then begin
+    t = CurrentTime;
+    t.second = t.second + 10;
+    NewTimedTask("Remove_ResetStopEInvoices","Remove ResetStopEInvoices","HTSCSResetStopEInvoicesRemoveIdleTask","",CurrentDate,t,"","");
+  end;
+  return;
+end;
+
+global
+procedure HTSCSResetStopEInvoicesRemoveIdleTask(string arg)
+begin
+  if (RemoveTask("ResetStopEInvoices")) then begin
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSGetBankStatementIdleTask(string arg)
+begin
+  Area a_req;
+  Integer i,rwcnt;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  Boolean stopidletaskf;
+  Time t;
+  record ServiceCacheVc SCr;
+  record DBERecordsBlock DBERb;
+  
+  stopidletaskf = true;
+
+  BlockLoad(DBERb);
+  if (DBERb.DBStatus==1) then begin
+    SCr.Code = "SENDEPAYMENTSEB";
+    if (ReadFirstMain(SCr,1,true)) then begin
+      oldcomp = CurrentCompany;  
+      BlockLoad(Compb);
+      rwcnt = MatRowCnt(Compb);  
+      for (i=0;i<rwcnt;i=i+1) begin
+        MatRowGet(Compb,i,Comprw);
+        if (blank(Comprw.TCPIP)) then begin
+          if (SetCompanyCode(Comprw.CompCode,false)) then begin
+            BlockLoad(EIb);
+            if (EIb.OutEPayments!=0 or EIb.DefaultEBehave!=0) then begin
+              SendFunctionVersion("52.0","",a_req);
+              SendTextParameter(CreateCompID,a_req);
+              SendEOLParameter(a_req);
+              if (ServiceRequestAsync("BANKSTATEMENT","SEB",true,a_req,"HTSCSGetBankStatementReply")==false) then begin
+              end;
+              stopidletaskf = false;
+            end;
+          end;
+        end;
+        ResetCompany(oldcomp);
+      end;
+    end else begin
+      LookupServiceAsync("BANKSTATEMENT","SEB",true);
+      LookupServiceAsync("SENDEPAYMENTSEB","",true);
+      LookupServiceAsync("BANKSTATEMENTCONFIRM","",true);
+      stopidletaskf = false;
+    end;
+  end;
+  if (stopidletaskf) then begin
+    t = CurrentTime;
+    t.second = t.second + 10;
+    NewTimedTask("Remove_GetBankStatement","Remove GetBankStatement","HTSCSGetBankStatementRemoveIdleTask","",CurrentDate,t,"","");
+  end;
+  return;
+end;
+
+global
+procedure HTSCSGetBankStatementRemoveIdleTask(string arg)
+begin
+  if (RemoveTask("GetBankStatement")) then begin
+  end;
+  return;
+end;
+
+function Boolean CheckIfBankTRExists(record BankTRVc BankTRr)
+begin
+  Boolean res;
+  record BankTRVc oldBankTRr;
+  
+/*  
+  oldBankTRr.TRNumber = BankTRr.TRNumber;
+  if (ReadFirstKey("TRNumber",oldBankTRr,1,true)) then begin
+    res = true;
+    goto LCheckIfBankTRExists;
+  end;
+*/  
+  oldBankTRr.OrdNumber = BankTRr.OrdNumber;
+  if (ReadFirstKey("OrdNumber",oldBankTRr,1,true)) then begin
+    res = true;
+    goto LCheckIfBankTRExists;
+  end;
+LCheckIfBankTRExists:;  
+  CheckIfBankTRExists = res;
+  return;
+end;
+
+global
+updating function Boolean AddBankTR(record BankTRVc BankTRr,record CYBlock CYb)
+begin
+  Boolean res,testf;
+  
+  if (CheckIfBankTRExists(BankTRr)==false) then begin
+    if (nonblank(BankTRr.TRNumber)) or (nonblank(BankTRr.OrdNumber)) then begin
+      testf = false;
+      if (BankTRr.PayName==CYb.CompName) then begin testf = true; end;
+      if (BankTRr.PayVATNr==CYb.VATNr) then begin testf = true; end;
+      if (BankTRr.PayRegNr1==CYb.OrgNr) then begin testf = true; end;
+      if (BankTRr.RcpName==CYb.CompName) then begin testf = true; end;
+      if (BankTRr.RcpVATNr==CYb.VATNr) then begin testf = true; end;
+      if (BankTRr.RcpRegNr1==CYb.OrgNr) then begin testf = true; end;
+      if (testf) then begin
+        BankTRr.TransDate = CurrentDate;
+        BankTRr.SerNr = NextSerNr("BankTRVc",BankTRr.TransDate,-1,false,"");
+        if (BankTRr.SerNr>0) then begin
+          if (RecordStore(BankTRr,false)) then begin
+            res = true;
+          end;
+        end;
+      end;
+    end;
+  end;
+  AddBankTR = res;
+  return;
+end;
+
+global
+updating procedure HTSCSGetBankStatementReply(Area a_reply,Area replyheader,Boolean timedout)
+begin
+  LongInt rerror,l;
+  string 255 rerrordesc,CompID;
+  string 255 compnr;
+  Integer oldcomp;
+  record BankTRVc BankTRr;
+  Array string 255 aconftrnumber;
+  Integer i,acnt;
+  Area a_confirm;
+  record TXServiceReplyVc TXSrvReplyr;
+  record CYBlock CYb;
+  LongInt banktr;
+
+// *  CreateFile("jjHTSCSGetBankStatementReply.txt");
+// *  CloseFile;
+// *  WriteAreaToFile(a_reply,"jjHTSCSGetBankStatementReply.txt",0);
+  if ((timedout) or (GetAreaLength(a_reply)<=0)) then begin
+    LookupServiceAsync("BANKSTATEMENT","",true);
+    LookupServiceAsync("BANKSTATEMENTCONFIRM","",true);
+  end else begin
+    ReadTXServiceReply(TXSrvReplyr,a_reply,true);
+    rerror = TXSrvReplyr.ErrorCode;
+    rerrordesc = TXSrvReplyr.ErrorDescription;
+
+    CompID  = GetTabTextFromArea(0,0,a_reply);
+    if (rerror==0) then begin
+    
+      compnr = LastInRange(CompID,20);
+      oldcomp = CurrentCompany;  
+      if (SetCompany(StringToInt(compnr),false)) then begin
+        BlockLoad(CYb);
+        l = GetRecordFromArea(BankTRr,"BankTRVc",0,a_reply);
+//LogText(0,"31.HTSCSGetBankStatementReply compnr " & compnr & " CurrentCompany " & CurrentCompany & " BankTRr.OrdNumber " &  BankTRr.OrdNumber);    
+        banktr = BankTRr.SerNr;
+        if (AddBankTR(BankTRr,CYb)) then begin
+          aconftrnumber[acnt] = banktr;
+          acnt = acnt + 1;
+        end else begin
+          if (CheckIfBankTRExists(BankTRr)) then begin
+            aconftrnumber[acnt] = banktr;
+            acnt = acnt + 1;
+          end;
+        end;
+        while (l<GetAreaLength(a_reply)) begin
+          l = GetRecordFromArea(BankTRr,"BankTRVc",l,a_reply);
+          banktr = BankTRr.SerNr;
+          if (AddBankTR(BankTRr,CYb)) then begin        
+            aconftrnumber[acnt] = banktr;
+            acnt = acnt + 1;
+          end else begin
+            if (CheckIfBankTRExists(BankTRr)) then begin
+              aconftrnumber[acnt] = banktr;
+              acnt = acnt + 1;
+            end;
+          end;
+        end;
+      end;
+      ResetCompany(oldcomp);
+
+      if (acnt>0) then begin
+        SendFunctionVersion("54.0","",a_confirm);
+        SendTextParameter(CreateCompID,a_confirm);
+        SendTextParameter(acnt,a_confirm);
+        SendEOLParameter(a_confirm);
+        for (i=0;i<acnt;i=i+1) begin
+//                  StoreTXConfirm(2,aconftrnumber[i],gServiceHost,gServicePort);
+          SendTextParameter(aconftrnumber[i],a_confirm);
+        end;
+
+  // *  CreateFile("jjHTSCSGetBankStatementReplyConfirm.txt");
+  // *  CloseFile;
+  // *  WriteAreaToFile(a_confirm,"jjHTSCSGetBankStatementReplyConfirm.txt",0);
+
+  //      SendAsyncServiceRequestNew("BANKSTATEMENTCONFIRM",a_confirm,"HTSCSGetBankStatementConfirmReply",false);  
+        if (ServiceRequestAsync("BANKSTATEMENTCONFIRM","",true,a_confirm,"HTSCSGetBankStatementConfirmReply")==false) then begin
+        end;
+      end;
+    end;
+  end;
+  return;
+end;
+
+global
+procedure HTSCSGetBankStatementConfirmReply(Area a_reply,Area replyheader,Boolean timedout)
+begin
+//just blank
+  transaction string 255 gServiceHost;
+  transaction LongInt gServicePort;
+  Integer i,acnt;
+  LongInt txconfnr,bankstnr;
+
+  if ((timedout) or (GetAreaLength(a_reply)<=0)) then begin
+    LogText(20235,"HTSCSGetBankStatementConfirmReply"); 
+  end else begin
+  end;
+  return;
+end;
+
+/*
+global
+updating procedure HTSCSXRateIdleTask(string arg)
+begin
+  record RcVc RepSpec;
+  Boolean found;
+  Integer errno;
+  string 255 errstr;
+  record EInvoiceBlock EIb;
+  record ERBlock ERb;
+  Time t;
+  Integer oldcomp;
+
+  oldcomp = CurrentCompany;  
+  if (nonblank(arg)) then begin
+    if (SetCompany(StringToInt(arg),false)) then begin end;
+  end;
+  BlockLoad(ERb);
+  RepSpec.d1 = CurrentDate;
+  RepSpec.flags[1] = ERb.OverwriteExistRate;
+  
+  if (ERb.RunDate<CurrentDate) then begin
+    found = GetExchangeRateFromBank(RepSpec,false,errno,errstr);  
+  end;
+  if (found==false) then begin
+    BlockLoad(EIb);
+    EIb.StopReason = USetStr(errno) & errstr;
+    BlockStore(EIb);    
+
+    t = ERb.ERTime;
+    if (blanktime(t)) then begin
+      t.hour = 12;
+      t.minute = 0;
+      t.second = 0;
+    end;
+    t.hour = t.hour + 1;
+    NewTimedTask("AutoExchangeRates","Get Exchange Rates","HTSCSXRateIdleTask",arg,CurrentDate,t,"HTSCSXRateIdleTaskCallBack","");
+  end else begin
+   if (ERb.RunDate<CurrentDate) then begin
+      ERb.RunDate = CurrentDate;
+      BlockStore(ERb);
+    end;
+  end;
+  ResetCompany(oldcomp);
+  return;
+end;
+*/
+
+global
+updating procedure HTSCSXRateIdleTask(string arg)
+begin
+  Integer i,rwcnt,error;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record ServiceCacheVc SCr;
+  Boolean found,stopidletaskf;
+  record ERBlock ERb;
+  Time t;
+  Integer compnr,errno;
+  record RcVc RepSpec;
+  string 255 errstr;
+
+  stopidletaskf = true;
+  
+  BlockLoad(ERb);
+  if (blank(arg)) then begin
+    SCr.Code = "NATIONALBANKCURRATES";
+    if (ReadFirstMain(SCr,1,true)) then begin   
+      oldcomp = CurrentCompany;  
+      BlockLoad(Compb);
+      rwcnt = MatRowCnt(Compb);    
+      for (i=0;i<rwcnt;i=i+1) begin
+        MatRowGet(Compb,i,Comprw);
+        if (blank(Comprw.TCPIP)) then begin
+          if (SetCompanyCode(Comprw.CompCode,false)) then begin
+            if (ERb.IdleTask!=0) then begin
+              if (ERb.RunDate<CurrentDate) then begin
+                RepSpec.d1 = CurrentDate;
+                RepSpec.flags[0] = 0;
+                RepSpec.flags[1] = ERb.OverwriteExistRate;
+                found = GetExchangeRateFromBank(RepSpec,false,errno,errstr);  
+              end;
+            end;
+          end;
+        end;
+      end;
+      ResetCompany(oldcomp);
+    end else begin
+      LookupServiceAsync("NATIONALBANKCURRATES","",true);
+      stopidletaskf = false;
+    end;
+  end else begin
+    compnr = StringToInt(arg);
+    if (compnr>0) then begin
+      oldcomp = CurrentCompany;  
+      if (SetCompany(compnr,false)) then begin
+        if (ERb.IdleTask!=0) then begin
+          if (ERb.RunDate<CurrentDate) then begin
+            RepSpec.d1 = CurrentDate;
+            RepSpec.flags[0] = 0;
+            RepSpec.flags[1] = ERb.OverwriteExistRate;
+            found = GetExchangeRateFromBank(RepSpec,false,errno,errstr);  
+          end;
+        end;
+      end;
+      ResetCompany(oldcomp);
+    end;
+  end;
+  if (stopidletaskf==false) then begin
+    if (ERb.IdleTask!=0) then begin
+      t = CurrentTime;
+      t.minute = t.minute + 3;
+      NewTimedTask("AutoExchangeRates","Get Exchange Rates","HTSCSXRateIdleTask","",CurrentDate,t,"","");
+    end;
+  end;
+LHTSCSXRateIdleTaskSTOP:;  
+  return;
+end;
+
+
+global
+updating procedure HTSUnblockSuppInvReply(Area a_reply,Area replyheader,Boolean timedout)
+begin
+  if ((timedout) or (GetAreaLength(a_reply)<=0)) then begin
+    LookupServiceAsync("UNBLOCKSUPPEINVOICE","",true);
+  end else begin
+  end;
+  return;
+end;
+
+/*
+not used
+global
+updating function Boolean HTSCSSendFromEInvoiceQueue()
+BEGIN
+  Boolean res;
+  Integer oldcomp;
+  record CompaniesBlock Cb;
+  row CompaniesBlock comprw;
+  Integer i,rwcnt,sentcnt;
+  Boolean resetf;
+  record DBERecordsBlock DBERb;
+  record InternetEnablerBlock IEb;
+    
+  BlockLoad(DBERb);
+  BlockLoad(IEb);
+  if (IsHansaWorldCustomer(IEb.CustomerCode)==false) then begin//not for ourselves
+  if (DBERb.DBStatus!=1) then begin
+    StopSendingERecords(20236,"");
+    goto LHTSCSSendFromEInvoiceQueueEnd;
+//jjtmp
+  end;
+  end;
+  oldcomp = CurrentCompany;    
+  BlockLoad(Cb);
+  rwcnt = MatRowCnt(Cb);
+  for (i=0;i<rwcnt;i=i+1) begin
+    MatRowGet(Cb,i,comprw);
+    if (SetCompany(i+1,false)) then begin
+      resetf = true;
+      if (HTSCSSEInvQueueForCompany(sentcnt)) then begin
+        res = true;
+      end;
+      if (sentcnt>10) then begin
+        goto LHTSCSSendFromEInvoiceQueue;
+      end;
+    end;
+  end;
+LHTSCSSendFromEInvoiceQueue:;  
+  if (resetf) then begin
+    ResetCompany(oldcomp);
+  end;
+LHTSCSSendFromEInvoiceQueueEnd:;  
+  HTSCSSendFromEInvoiceQueue = res;
+  RETURN;
+END;
+*/
+
+global
+updating procedure HTSCSGetEPaymentStatusIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr,SCSEBr,SCHANSAr,SCRKASSAr,SCSMAPOr,SCSWEDBANKr;
+  Boolean found,foundsampo,foundrkassa,foundhansa,foundseb,foundswedbank;
+  Integer i,rwcnt;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  Boolean stopidletaskf;
+  Time t;
+  
+  stopidletaskf = true;
+  SCr.Code = "SENDEPAYMENT";
+  found = ReadFirstMain(SCr,1,true);
+
+  SCSEBr.Code = "SENDEPAYMENTSEB";
+  foundseb = ReadFirstMain(SCSEBr,1,true);
+  
+  SCHANSAr.Code = "SENDEPAYMENTHANSA";
+  foundhansa = ReadFirstMain(SCHANSAr,1,true);
+
+  SCRKASSAr.Code = "SENDEPAYMENTRKASSA";
+  foundrkassa = ReadFirstMain(SCRKASSAr,1,true);
+
+  SCSMAPOr.Code = "SENDEPAYMENTSAMPO";
+  foundsampo = ReadFirstMain(SCSMAPOr,1,true);
+
+  SCSWEDBANKr.Code = "SENDEPAYMENTSWEDBANK";
+  foundswedbank = ReadFirstMain(SCSWEDBANKr,1,true);
+
+  if (found or foundsampo or foundrkassa or foundhansa or foundseb or foundswedbank) then begin
+
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+      if (SetCompanyCode(Comprw.CompCode,false)) then begin
+        BlockLoad(EIb);
+        if (EIb.OutEPayments!=0 or EIb.DefaultEBehave!=0) then begin
+          if (found) then begin HTSCSRequestStatusFromTXServer(SCr); end;
+          if (foundseb) then begin HTSCSRequestStatusFromTXServer(SCSEBr); end;
+          if (foundhansa) then begin HTSCSRequestStatusFromTXServer(SCHANSAr); end;
+          if (foundrkassa) then begin HTSCSRequestStatusFromTXServer(SCRKASSAr); end;
+          if (foundsampo) then begin HTSCSRequestStatusFromTXServer(SCSMAPOr); end;
+          if (foundswedbank) then begin HTSCSRequestStatusFromTXServer(SCSWEDBANKr); end;
+          stopidletaskf = false;
+        end;
+      end;
+      end;
+    end;
+    ResetCompany(oldcomp);
+  end;
+  
+  if (stopidletaskf) then begin
+    t = CurrentTime;
+    t.second = t.second + 10;
+    NewTimedTask("Remove_GetEPaymentStatuses","Remove GetEPaymentStatuses","HTSCSGetEPaymentStatusRemoveIdleTask","",CurrentDate,t,"","");
+  end;
+  return;
+end;
+
+global
+procedure HTSCSGetEPaymentStatusRemoveIdleTask(string arg)
+begin
+  if (RemoveTask("GetEPaymentStatuses")) then begin
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSGetEInvoiceStatusIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Integer i,rwcnt;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  Boolean stopidletaskf;
+  Time t;
+  boolean foundf;
+  
+  stopidletaskf = true;
+  SCr.Code = "SENDEINVOICE2";
+  foundf = ReadFirstMain(SCr,1,true);
+  if (foundf==false) then begin
+    SCr.Code = "SENDEINVOICE";
+    foundf = ReadFirstMain(SCr,1,true);
+  end;
+  if (foundf) then begin
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);    
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+      if (SetCompanyCode(Comprw.CompCode,false)) then begin
+        BlockLoad(EIb);
+        if (EIb.OutEInvoices!=0 or EIb.DefaultEBehave!=0) then begin
+          HTSCSRequestStatusFromTXServer(SCr);
+          stopidletaskf = false;
+        end;
+      end;
+      end;
+    end;
+    ResetCompany(oldcomp);
+  end;  
+  if (stopidletaskf) then begin
+    t = CurrentTime;
+    t.second = t.second + 10;
+    NewTimedTask("Remove_GetEInvoiceStatuses","Remove GetEInvoiceStatuses","HTSCSGetEInvoiceStatusRemoveIdleTask","",CurrentDate,t,"","");
+  end;
+  return;
+end;
+
+global
+procedure HTSCSGetEInvoiceStatusRemoveIdleTask(string arg)
+begin
+  if (RemoveTask("GetEInvoiceStatuses")) then begin
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSGetSupEInvStatusIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Integer i,rwcnt;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  Boolean stopidletaskf,foundf;
+  Time t;
+  
+  stopidletaskf = true;
+  SCr.Code = "GETSUPPLIEREINVOICE2";
+  foundf = ReadFirstMain(SCr,1,true);
+  if (foundf==false) then begin
+    SCr.Code = "GETSUPPLIEREINVOICE";
+    foundf = ReadFirstMain(SCr,1,true);
+  end;
+  if (foundf) then begin
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);    
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+      if (SetCompanyCode(Comprw.CompCode,false)) then begin
+        BlockLoad(EIb);
+        if (EIb.RcvEInvoices!=0 or EIb.DefaultEBehave!=0) then begin
+          HTSCSRequestStatusFromTXServer(SCr);
+          stopidletaskf = false;
+        end;
+      end;
+      end;
+    end;
+    ResetCompany(oldcomp);
+  end;  
+  if (stopidletaskf) then begin
+    t = CurrentTime;
+    t.second = t.second + 10;
+    NewTimedTask("Remove_GetSupplierEInvoiceStatuses","Remove GetSupplierEInvoiceStatuses","HTSCSGetSupEInvStatusRemoveIdleTask","",CurrentDate,t,"","");
+  end;
+  return;
+end;
+
+global
+procedure HTSCSGetSupEInvStatusRemoveIdleTask(string arg)
+begin
+  if (RemoveTask("GetSupplierEInvoiceStatuses")) then begin
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSGetEVATDecStatusIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Integer i,rwcnt;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  Boolean stopidletaskf;
+  Time t;
+  
+  stopidletaskf = true;
+  SCr.Code = "EVATDECLARATION";
+  if (ReadFirstMain(SCr,1,true)) then begin
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);    
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+      if (SetCompanyCode(Comprw.CompCode,false)) then begin
+        BlockLoad(EIb);
+        if (EIb.OutEVat!=0 or EIb.DefaultEBehave!=0) then begin
+          HTSCSRequestStatusFromTXServer(SCr);
+          stopidletaskf = false;
+        end;
+      end;
+      end;
+    end;
+    ResetCompany(oldcomp);
+  end;  
+  if (stopidletaskf) then begin
+    t = CurrentTime;
+    t.second = t.second + 10;
+    NewTimedTask("Remove_GetEVATDeclarationStatuses","Remove GetEVATDeclarationStatuses","HTSCSGetEVATDecStatusRemoveIdleTask","",CurrentDate,t,"","");
+  end;
+  return;
+end;
+
+global
+procedure HTSCSGetEVATDecStatusRemoveIdleTask(string arg)
+begin
+  if (RemoveTask("GetEVATDeclarationStatuses")) then begin
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSSendSupEInvStatusIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Integer i,rwcnt;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  Boolean stopidletaskf;
+  Time t;
+  record DBERecordsBlock DBERb;
+
+  stopidletaskf = true;
+
+  BlockLoad(DBERb);
+  if (DBERb.DBStatus==1) then begin
+    SCr.Code = "SENDERECORDSTATUS";
+    if (ReadFirstMain(SCr,1,true)) then begin
+      oldcomp = CurrentCompany;  
+      BlockLoad(Compb);
+      rwcnt = MatRowCnt(Compb);    
+      for (i=0;i<rwcnt;i=i+1) begin
+        MatRowGet(Compb,i,Comprw);
+        if (blank(Comprw.TCPIP)) then begin
+          if (SetCompanyCode(Comprw.CompCode,false)) then begin
+            BlockLoad(EIb);
+            if (EIb.RcvEInvoices!=0 or EIb.DefaultEBehave!=0) then begin
+              HTSCSSendSuppplierRecordStatuses;
+              stopidletaskf = false;
+            end;
+          end;
+        end;
+      end;
+      ResetCompany(oldcomp);
+    end else begin
+      LookupServiceAsync("SENDERECORDSTATUS","",true);
+      stopidletaskf = false;
+    end;
+  end;
+  if (stopidletaskf) then begin
+    t = CurrentTime;
+    t.second = t.second + 10;
+    NewTimedTask("Remove_SendSupplierEInvoiceStatuses","Remove SendSupplierEInvoiceStatuses","HTSCSSendSupEInvStatusRemoveIdleTask","",CurrentDate,t,"","");
+  end;
+  return;
+end;
+
+global
+procedure HTSCSSendSupEInvStatusRemoveIdleTask(string arg)
+begin
+  if (RemoveTask("SendSupplierEInvoiceStatuses")) then begin
+  end;
+  RETURN;
+END;
+
+
+
+updating function Boolean HTSCSSendEInvoiceFromCurCompany()
+begin
+  record EInvoiceQueVc EInvoiceQuer;
+  Boolean TrHs;
+  Integer cnt;
+  
+  TrHs = true;
+  EInvoiceQuer.Status = 0;
+  while (LoopKey("Status",EInvoiceQuer,1,TrHs)) begin
+    if (EInvoiceQuer.Status!=0) then begin
+      TrHs = false;
+    end;
+    if (cnt>=4) then begin TrHs = false; end; //4 at a time
+    if (TrHs) then begin
+      if (HTSCSSendRecordFromEInvoiceQueue(EInvoiceQuer)) then begin
+        cnt = cnt + 1;
+      end;
+    end;
+  end;   
+  HTSCSSendEInvoiceFromCurCompany = cnt>0;   
+  return;
+end;
+
+global
+updating procedure HTSCSSendEInvoiceIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Integer i,rwcnt,error;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  Boolean stopidletaskf;
+  Time t,startt;
+  Date td;
+  record DBERecordsBlock DBERb;
+  record InternetEnablerBlock IEb;
+  Boolean noeinvocinf,sentf,foundf;
+  Integer compcode;
+  
+  stopidletaskf = true;
+  BlockLoad(DBERb);
+  BlockLoad(IEb);
+  if (IsHansaWorldCustomer(IEb.CustomerCode)==false) then begin
+    if (DBERb.DBStatus!=1) then begin
+      error = 20236;
+      goto LHTSCSSendEInvoiceIdleTaskSTOP;
+    end;
+    compcode = IEb.RegInCountry;
+  end else begin
+    compcode = GetCodeFromCompanyCode(CurrentCompany);
+  end;
+  if (CheckInternetEnabler==false) then begin
+    error = 20242;
+    goto LHTSCSSendEInvoiceIdleTaskSTOP;
+  end;
+  
+  SCr.Code = "SENDEINVOICE2";
+  foundf = ReadFirstMain(SCr,1,true);
+  if (foundf==false) then begin
+    SCr.Code = "SENDEINVOICE";
+    foundf = ReadFirstMain(SCr,1,true);
+  end;
+  if (foundf) then begin   
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);    
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+        if (SetCompanyCode(Comprw.CompCode,false)) then begin
+          BlockLoad(EIb);
+          noeinvocinf = false;
+          if (compcode==3 and SCr.Partner!="TIETO") then begin 
+            if (EIb.RegAtPartner!=2) then begin
+              if (EIb.StopEInvoices==0) then begin
+                if (EIb.OutEInvoices!=0) or (EIb.RcvEInvoices!=0) or (EIb.DefaultEBehave!=0) then begin
+                  if (EIb.RegAtPartner!=0) then begin
+                    RegisterForEInvoicing;//for checking if registered already
+                  end;
+                end;
+              end;
+              noeinvocinf = true;
+            end;
+          end;
+          if (EIb.StopEInvoices!=0) then begin 
+            noeinvocinf = true;
+          end;
+          if (EIb.OutEInvoices==0) and (EIb.DefaultEBehave==0) then begin 
+            noeinvocinf = true;
+          end else begin
+            stopidletaskf = false;
+          end;
+          if (noeinvocinf==false) then begin 
+            sentf = sentf or HTSCSSendEInvoiceFromCurCompany;
+            stopidletaskf = false;
+          end;
+        end;
+      end;
+    end;
+    ResetCompany(oldcomp);
+  end else begin
+    LookupServiceAsync("SENDEINVOICE",GetEInvPartner,true);
+    LookupServiceAsync("SENDEINVOICE2",GetEInvPartner,true);
+    stopidletaskf = false;
+  end;
+LHTSCSSendEInvoiceIdleTaskSTOP:;  
+  if (stopidletaskf) then begin
+    t = CurrentTime;
+    t.second = t.second + 10;
+    NewTimedTask("Remove_SendEInvoice","Remove SendEInvoice","HTSCSSendEInvoiceIdleTaskRemoveIdleTask",error,CurrentDate,t,"","");
+  end else begin
+//    if (sentf==false) then begin
+      startt = CurrentTime;
+      t = startt;
+      t.second = t.second + 10;
+      td = CurrentDate;
+      if (t<startt) then begin
+        td = AddDay(td,1);
+      end;
+      NewTimedTask("Start_SendEInvoice","Start SendEInvoice","HTSCSSendEInvoiceIdleTaskStartTask","5",td,t,"","");
+  //SendEInvoice queing change
+//    end;
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSSendEInvoiceIdleTaskStartTask(string arg)
+begin
+  Integer min;
+  Time t,startt;
+  Date td;
+  
+  if (TaskExists("SendEInvoice")==false) then begin
+    min = StringToInt(arg);
+    if (min<=0) then begin min = 2; end;
+    startt = CurrentTime;
+    t = AddMinutes(startt,min);
+    td = CurrentDate;
+    if (t<startt) then begin
+      td = AddDay(td,1);
+    end;
+    NewTimedTask("SendEInvoice","Send EInvoices","HTSCSSendEInvoiceIdleTask","",td,t,"","");
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSSendEInvoiceIdleTaskRemoveIdleTask(string arg)
+begin
+  Integer error;
+  
+  error = StringToInt(arg);
+  if (error>0) then begin
+//    DBStatusStopReason(StringToInt(arg),"");
+    StopSendingERecords(StringToInt(arg),"");
+  end;
+  if (RemoveTask("SendEInvoice")) then begin
+  end;
+  return;
+end;
+
+global
+updating procedure HTSNationalBankCurRatesReply(Area a_reply,Area replyheader,Boolean timedout)
+begin
+  string 255 errstr;
+  Integer errno;
+  record ERBlock ERb;
+  Boolean found;
+  Time t;
+  Date od;
+
+  BlockLoad(ERb);
+  if ((timedout) or (GetAreaLength(a_reply)<=0)) then begin
+    LookupServiceAsync("NATIONALBANKCURRATES","",true);
+    if (ERb.IdleTask!=0) then begin
+      t = CurrentTime;
+      t.minute = t.minute + 3;
+      NewTimedTask("AutoExchangeRates","Get Exchange Rates","HTSCSXRateIdleTask","",CurrentDate,t,"","");
+    end;
+  end else begin
+    found = ReadExchangeRateFromBank(a_reply,CurrentDate,0,ERb.OverwriteExistRate,errno,errstr,od);
+    if (found) then begin
+      if (ERb.IdleTask!=0) then begin
+        t = ERb.ERTime;
+        if (blanktime(t)) then begin
+          t.hour = 12;
+          t.minute = 0;
+          t.second = 0;
+        end;
+        NewTimedTask("AutoExchangeRatesComp_" & CurrentCompany,"Get Exchange Rates","HTSCSXRateIdleTask",CurrentCompany,AddDay(CurrentDate,1),t,"","");
+      end;
+    end;
+  end;
+end;
+
+updating procedure HTSCSSendEPaymentFromCurCompany(Integer type)
+begin
+  record EPaymentQueVc EPaymentQuer;
+  Boolean TrHs;
+  Integer cnt;
+  
+  TrHs = true;
+  EPaymentQuer.Status = 0;
+  while (LoopKey("Status",EPaymentQuer,1,TrHs)) begin
+    if (EPaymentQuer.Status!=0) then begin
+      TrHs = false;
+    end;
+    if (cnt>3) then begin TrHs = false; end;//1 at a time
+    if (TrHs) then begin
+      if (type==EPaymentQuer.Type) then begin
+        if (HTSCSSendRecordFromEPaymentQueue(EPaymentQuer)) then begin
+          cnt = cnt + 1;
+        end;
+      end;
+    end;
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSSendEPaymentIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Boolean found;
+  Integer i,rwcnt,error;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  Boolean stopidletaskf;
+  Time t;
+  record DBERecordsBlock DBERb;
+  record InternetEnablerBlock IEb;
+  Boolean testf;
+  
+  stopidletaskf = true;
+  BlockLoad(DBERb);
+  BlockLoad(IEb);
+
+//jjtmpenab
+  if (IsHansaWorldCustomer(IEb.CustomerCode)==false) then begin
+    if (DBERb.DBStatus!=1) then begin
+      error = 20236;
+      goto LHTSCSSendEPaymentIdleTaskSTOP;
+    end;
+  end;
+  if (CheckInternetEnabler==false) then begin
+    error = 20242;
+    goto LHTSCSSendEPaymentIdleTaskSTOP;
+  end;
+
+  SCr.Code = "SENDEPAYMENT";
+  found = ReadFirstMain(SCr,1,true);
+  if (!found) then begin
+    SCr.Code = "SENDEPAYMENTSEB";
+    found = ReadFirstMain(SCr,1,true);
+  end;
+  if (!found) then begin
+    SCr.Code = "SENDEPAYMENTHANSA";
+    found = ReadFirstMain(SCr,1,true);
+  end;
+  if (!found) then begin
+    SCr.Code = "SENDEPAYMENTRKASSA";
+    found = ReadFirstMain(SCr,1,true);
+  end;
+  if (!found) then begin
+    SCr.Code = "SENDEPAYMENTSAMPO";
+    found = ReadFirstMain(SCr,1,true);
+  end;
+  if (!found) then begin
+    SCr.Code = "SENDEPAYMENTSWEDBANK";
+    found = ReadFirstMain(SCr,1,true);
+  end;
+  if (found) then begin   
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);    
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+        if (SetCompanyCode(Comprw.CompCode,false)) then begin
+          BlockLoad(EIb);
+          testf = true;
+          if (EIb.OutEPayments==0 and EIb.DefaultEBehave==0) then begin 
+            testf = false;
+          end;
+          if (EIb.StopEInvoices!=0) then begin 
+            testf = false;
+          end;
+          if (testf) then begin 
+            HTSCSSendEPaymentFromCurCompany(0);
+            stopidletaskf = false;
+          end;
+        end;
+      end;
+    end;
+    ResetCompany(oldcomp);
+  end else begin
+    LookupServiceAsync("SENDEPAYMENT","",true);
+    LookupServiceAsync("SENDEPAYMENTSEB","",true);
+    LookupServiceAsync("SENDEPAYMENTHANSA","",true);
+    LookupServiceAsync("SENDEPAYMENTRKASSA","",true);
+    LookupServiceAsync("SENDEPAYMENTSWEDBANK","",true);
+//    LookupServiceAsync("SENDEPAYMENTSAMPO","",true); // no service yet
+    stopidletaskf = false;
+  end;
+LHTSCSSendEPaymentIdleTaskSTOP:;  
+  if (stopidletaskf) then begin
+    t = CurrentTime;
+    t.second = t.second + 10;
+    NewTimedTask("Remove_SendEPayment","Remove SendEPayment","HTSCSSendEPaymentIdleTaskRemoveIdleTask",error,CurrentDate,t,"","");
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSSendEPaymentIdleTaskRemoveIdleTask(string arg)
+begin
+  Integer error;
+  
+  error = StringToInt(arg);
+  if (error>0) then begin
+//    DBStatusStopReason(StringToInt(arg),"");
+    StopSendingERecords(StringToInt(arg),"");
+  end;
+  if (RemoveTask("SendEPayment")) then begin
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSSendEDirectDebitIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Integer i,rwcnt,error;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  Boolean stopidletaskf;
+  Time t;
+  record DBERecordsBlock DBERb;
+  record InternetEnablerBlock IEb;
+  Boolean testf;
+  
+  stopidletaskf = true;
+  BlockLoad(DBERb);
+  BlockLoad(IEb);
+  if (IsHansaWorldCustomer(IEb.CustomerCode)==false) then begin
+    if (DBERb.DBStatus!=1) then begin
+      error = 20236;
+      goto LHTSCSSendEDirectDebitIdleTaskSTOP;
+    end;
+  end;
+  if (CheckInternetEnabler==false) then begin
+    error = 20242;
+    goto LHTSCSSendEDirectDebitIdleTaskSTOP;
+  end;
+  
+  SCr.Code = "SENDEDIRECTDEBIT";
+  if (ReadFirstMain(SCr,1,true)) then begin   
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);    
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+        if (SetCompanyCode(Comprw.CompCode,false)) then begin
+          BlockLoad(EIb);
+          testf = true;
+          if (EIb.OutEDirDebt==0 and EIb.DefaultEBehave==0) then begin 
+            testf = false;
+          end;
+          if (EIb.StopEInvoices!=0) then begin 
+            testf = false;
+          end;
+          if (testf) then begin 
+            HTSCSSendEPaymentFromCurCompany(1);
+            stopidletaskf = false;
+          end;
+        end;
+      end;
+    end;
+    ResetCompany(oldcomp);
+  end else begin
+    LookupServiceAsync("SENDEDIRECTDEBIT","",true);
+    stopidletaskf = false;
+  end;            
+LHTSCSSendEDirectDebitIdleTaskSTOP:;  
+  if (stopidletaskf) then begin
+    t = CurrentTime;
+    t.second = t.second + 10;
+    NewTimedTask("Remove_SendEDirectDebit","Remove SendEDirectDebit","HTSCSSendEDirectDebitIdleTaskRemoveIdleTask",error,CurrentDate,t,"","");
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSSendEDirectDebitIdleTaskRemoveIdleTask(string arg)
+begin
+  Integer error;
+  
+  error = StringToInt(arg);
+  if (error>0) then begin
+//    DBStatusStopReason(StringToInt(arg),"");
+    StopSendingERecords(StringToInt(arg),"");
+  end;
+  if (RemoveTask("SendEDirectDebit")) then begin
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSReceiveEInvoiceIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Integer i,rwcnt,error;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  Boolean stopidletaskf,sentf;
+  Time t,startt;
+  record DBERecordsBlock DBERb;
+  record InternetEnablerBlock IEb;
+  Boolean testf,foundf;
+  Date td;
+  
+  stopidletaskf = true;
+  BlockLoad(DBERb);
+  BlockLoad(IEb);
+  if (IsHansaWorldCustomer(IEb.CustomerCode)==false) then begin
+    if (DBERb.DBStatus!=1) then begin
+      error = 20236;
+      goto LHTSCSReceiveEInvoiceIdleTaskSTOP;
+    end;
+  end;
+  if (CheckInternetEnabler==false) then begin
+    error = 20242;
+    goto LHTSCSReceiveEInvoiceIdleTaskSTOP;
+  end;  
+
+  SCr.Code = "GETSUPPLIEREINVOICE2";
+  foundf = ReadFirstMain(SCr,1,true);
+  if (foundf==false) then begin
+    SCr.Code = "GETSUPPLIEREINVOICE";
+    foundf = ReadFirstMain(SCr,1,true);
+  end;
+  if (foundf) then begin   
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);    
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+        if (SetCompanyCode(Comprw.CompCode,false)) then begin
+          BlockLoad(EIb);
+          testf = true;
+          if (EIb.RcvEInvoices==0 and EIb.DefaultEBehave==0) then begin 
+            testf = false;
+          end else begin
+            stopidletaskf = false;
+          end;
+          if (EIb.StopEInvoices!=0) then begin 
+            testf = false;
+          end;
+          if (testf) then begin 
+            sentf = sentf or HTSCSRequestSuppplierEInvoice;
+            stopidletaskf = false;
+          end;
+        end;
+      end;
+    end;
+    ResetCompany(oldcomp);
+  end else begin
+    LookupServiceAsync("GETSUPPLIEREINVOICE","",true);
+    LookupServiceAsync("GETSUPPLIEREINVOICE2","",true);
+    stopidletaskf = false;
+  end;
+LHTSCSReceiveEInvoiceIdleTaskSTOP:;  
+  if (stopidletaskf) then begin
+    t = CurrentTime;
+    t.second = t.second + 10;
+    NewTimedTask("Remove_ReceiveEInvoice","Remove ReceiveEInvoice","HTSCSReceiveEInvoiceIdleTaskRemoveIdleTask",error,CurrentDate,t,"","");
+  end else begin
+//    if (sentf==false) then begin
+      startt = CurrentTime;
+      t = startt;
+      t.second = t.second + 10;
+      td = CurrentDate;
+      if (t<startt) then begin
+        td = AddDay(td,1);
+      end;
+      NewTimedTask("Start_ReceiveEInvoice","Start ReceiveEInvoice","HTSCSReceiveEInvoiceIdleTaskStartTask","5",td,t,"","");
+  //SendEInvoice queing change
+//    end;
+/*  it is NewPeriodicTask
+    if (TaskExists("ReceiveEInvoice")==false) then begin
+      startt = CurrentTime;
+      t = AddMinutes(startt,10);
+      td = CurrentDate;
+      if (t<startt) then begin
+        td = AddDay(td,1);
+      end;
+      NewTimedTask("ReceiveEInvoice","Run ReceiveEInvoice","HTSCSReceiveEInvoiceIdleTask","",td,t,"","");
+    end;
+*/    
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSReceiveEInvoiceIdleTaskStartTask(string arg)
+begin
+  Integer min;
+  Time t,startt;
+  Date td;
+  
+  if (TaskExists("ReceiveEInvoice")==false) then begin
+    min = StringToInt(arg);
+    if (min<=0) then begin min = 2; end;
+    startt = CurrentTime;
+    t = AddMinutes(startt,min);
+    td = CurrentDate;
+    if (t<startt) then begin
+      td = AddDay(td,1);
+    end;
+    NewTimedTask("ReceiveEInvoice","Run ReceiveEInvoice","HTSCSReceiveEInvoiceIdleTask","",td,t,"","");
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSReceiveEInvoiceIdleTaskRemoveIdleTask(string arg)
+begin
+  Integer error;
+  
+  error = StringToInt(arg);
+  if (error>0) then begin
+//    DBStatusStopReason(StringToInt(arg),"");
+    StopSendingERecords(StringToInt(arg),"");
+  end;
+  if (RemoveTask("ReceiveEInvoice")) then begin
+  end;
+  return;
+end;
+
+global
+updating procedure HTSCSGetSMSStatusIdleTask(string arg)
+begin
+  record ServiceCacheVc SCr;
+  Integer i,rwcnt;
+  Integer oldcomp;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  record EInvoiceBlock EIb;
+  Boolean stopidletaskf;
+  Time t;
+  
+  stopidletaskf = true;
+  SCr.Code = "SENDSMS";
+  if (ReadFirstMain(SCr,1,true)) then begin
+/*
+    oldcomp = CurrentCompany;  
+    BlockLoad(Compb);
+    rwcnt = MatRowCnt(Compb);    
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Compb,i,Comprw);
+      if (blank(Comprw.TCPIP)) then begin
+        if (SetCompanyCode(Comprw.CompCode,false)) then begin
+*/
+          HTSCSRequestStatusFromTXServer(SCr);
+          stopidletaskf = false;
+/*
+        end;
+      end;
+    end;
+    ResetCompany(oldcomp);
+*/
+  end;  
+  if (stopidletaskf) then begin
+    t = CurrentTime;
+    t.second = t.second + 10;
+    NewTimedTask("Remove_GetEInvoiceStatuses","Remove GetSMSStatuses","HTSCSGetSMSStatusRemoveIdleTask","",CurrentDate,t,"","");
+  end;
+  return;
+end;
+
+global
+procedure HTSCSGetSMSStatusRemoveIdleTask(string arg)
+begin
+  if (RemoveTask("GetSMSStatuses")) then begin
+  end;
+  return;
+end;
+
+global
+updating function Integer ResendEIVRemote(record IVVc IVr)
+begin
+  Integer res;
+  record EInvoiceQueVc EIQuer;
+  record ERecordStatusVc ERSr;
+  record InternetEnablerBlock IEb;
+  Boolean testf,einvquef,updf;
+  record EInvoiceBlock EIb;
+  record CUVc CUr;
+  LongInt errcode2;
+  string 255 filename,gotofield;
+
+  res = 1;
+  BlockLoad(EIb);
+  if (IVr.CAEAFlag==0) then begin
+    if (HasLocalization("EST")) and (EIb.OutEstEInvoices==1) then begin
+      filename = "estIVVc";
+    end else begin
+      filename = "IVVc";
+    end;
+  end else begin
+    filename = "ArgIVVc";
+  end;
+  EIQuer.RecSerNr = IVr.SerNr;
+  EIQuer.RecVersionNr = 10000;
+  EIQuer.FileName = filename;
+  if (ReadLastKey("RecVersionNr",EIQuer,3,false)) then begin
+    testf = true;
+    if (EIQuer.FileName!=filename) then begin testf = false; end;
+    if (EIQuer.RecSerNr!=IVr.SerNr) then begin testf = false; end;
+    if (testf) then begin
+      BlockLoad(IEb);
+      ERSr.FileName = filename;
+      ERSr.Status = 0;
+      ERSr.CustID = IEb.CustomerCode;
+      ERSr.CustSerNr = IVr.SerNr;
+      einvquef = true;
+      testf = ReadFirstKey("FileNameStatus",ERSr,4,true);
+      if (testf==false) then begin
+        ERSr.FileName = filename;
+        ERSr.Status = 0;
+        ERSr.CustID = IVr.CustCode;
+        ERSr.CustSerNr = IVr.SerNr;
+        testf = ReadFirstKey("FileNameStatus",ERSr,4,true);
+      end;
+    end else begin
+      einvquef = false;
+    end;
+  end;
+  if (einvquef) then begin
+    if (testf==false) then begin
+      if (IsStandardProduct and (HasEInvoicing or CountRecords("EInvoiceQueVc")>0)) then begin
+        testf = true;
+      end;
+    end;
+    if (testf) then begin
+      if (EInvoiceQueTransaction(IVr,USetStr(1150),0,EIQuer.RecVersionNr+1)) then begin // CUST
+        res = 0;
+      end;
+    end;
+  end else begin
+    if (IVr.OKFlag!=0 and HasLocalization("FIN,SVN")) then begin
+      testf = true;
+      if (CheckInternetEnabler==false) then begin 
+        testf = false; 
+        res = 14681;
+      end;
+      if (testf) then begin
+        CUr.Code = IVr.CustCode;
+        ReadFirstMain(CUr,1,true);
+        if (ValidEInvoiceData2(IVr,CUr,errcode2,gotofield)==false) then begin testf = false; end;
+      end;
+      if (testf) then begin
+        if (EInvoiceQueTransaction(IVr,USetStr(1150),0,0)) then begin
+          res = 0;
+        end;
+      end;
+    end;
+  end;
+  ResendEIVRemote = res;
+  return;
+end;
+
+global
+procedure SendKeyRequestErrorToHansaMail(LongInt errorcode)
+begin
+  record InternetEnablerBlock IEb;
+  area request;
+
+  BlockLoad(IEb);  
+  if (IsHansaWorldCustomer(IEb.CustomerCode)==false) then begin//not for ourselves
+    SendTextParameter(IEb.RegInCountry,request);
+    SendTextParameter(IEb.CustomerCode,request);
+    SendTextParameter(errorcode,request);
+    SendEOLParameter(request);
+    SendAsyncServiceRequestToHansaMail("HTSSendKeyRequestErrorToHansaMail.hal",request,"HTSSendKeyRequestErrorToHansaMailReply");
+  end;
+  return;
+end;
+
+global
+procedure HTSSendKeyRequestErrorToHansaMailReply(Area a_reply,Area replyheader,Boolean timedout)
+begin
+  return;
+end;
+
+global
+updating procedure ClearLoginTicket()
+begin
+  record HTSCUVc HTSCUr;
+  record HTSCUVc oldHTSCUr;
+  record CYBlock CYb;
+
+  BlockLoad(CYb);
+  HTSCUr.VATNr = StripNonDigits(CYb.VATNr);
+  if (ReadFirstMain(HTSCUr,1,true)) then begin
+    RecordCopy(oldHTSCUr,HTSCUr);
+    if (nonblank(HTSCUr.LoginTicketPart1)) or (nonblank(HTSCUr.ExportLoginTicketPart1))
+    or (nonblankdate(HTSCUr.LoginExpiryDate)) or (nonblankdate(HTSCUr.LoginExpiryDate)) then begin
+      HTSCUr.LoginExpiryDate = "";
+      HTSCUr.LoginExpiryTime = "";
+      HTSCUr.LoginTicketPart1 = "";
+      HTSCUr.LoginTicketPart2 = "";
+      HTSCUr.LoginTicketPart3 = "";
+      HTSCUr.LoginTicketPart4 = "";
+      HTSCUr.ExportLoginExpiryDate = "";
+      HTSCUr.ExportLoginExpiryTime = "";
+      HTSCUr.ExportLoginTicketPart1 = "";
+      HTSCUr.ExportLoginTicketPart2 = "";
+      HTSCUr.ExportLoginTicketPart3 = "";
+      HTSCUr.ExportLoginTicketPart4 = "";
+      RecordUpdate(oldHTSCUr,HTSCUr,false);
+    end;
+  end;
+  return;
+end;
+
+global
+updating procedure ClearLoginTicketinAllCompanies()
+begin
+  Integer oldcomp,i,rwcnt;
+  record CompaniesBlock Compb;
+  row CompaniesBlock Comprw;
+  
+  oldcomp = CurrentCompany;
+  BlockLoad(Compb);
+  rwcnt = MatRowCnt(Compb);  
+  for (i=0;i<rwcnt;i=i+1) begin
+    MatRowGet(Compb,i,Comprw);
+    if (blank(Comprw.TCPIP)) then begin
+      if (SetCompanyCode(Comprw.CompCode,false)) then begin
+        ClearLoginTicket;
+      end;
+    end;
+  end;
+  ResetCompany(oldcomp);
+  return;
+end;
+

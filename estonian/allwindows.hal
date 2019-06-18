@@ -1,0 +1,55 @@
+external inner function Boolean HasObjects();
+external inner function Boolean HasMultiCurrency();
+external inner function Boolean HasLanguages();
+external inner function Boolean HasAdvancedAccounting();
+external inner function Boolean HasBase2();
+
+//cust start
+window MonthResRClass:1 
+  wtag("language","EST"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real h,v,vm;
+  WindowBegin("MŠŠra kasumiaruanne kuude l›ikes",MonthResRClass,CGRcW,RcType);
+  SetWRect(20,80,580,250);
+  PeriodField(h=150,v=6,"Periood (maks.12 kuud)");
+  if (HasObjects) then begin
+  EditFieldTL(h,v+=20,150,"Objekt",M4UStr,Normal,60 ,ObjStr,false,ObjSClass);
+  EditFieldTL(h,v+=20,50,"ObjektitŸŸp",M4UStr,Normal,5 ,ObjType,false,OTSClass);
+  end;
+  vm=v;
+  if (HasMultiCurrency) then begin
+  EditField(h,v+=20,50,"Valuuta",Normal,CurncyCode,false,CurncyCodeSClass);
+  end;
+  if (HasLanguages) then begin
+  EditField(h,v+=20,50,"Keel",Normal,Language,false,LangSClass);  
+  end;
+  EditFieldTL(395,6,120,"PŠis",M4Str,Normal,60 ,f1,false,0);
+  ButtonFrame(h=395,v=vm,123,5,"Kontod");
+  RadioButton(h,v,0,0,"K›ik",AccSpec);
+  RadioButton(h,v+=16,1,0,"Ainult kasutatud",AccSpec);
+  if (HasAdvancedAccounting or HasLocalization("FIN")) then begin
+  RadioButton(h,v+=16,2,0,"A_inult grupid",AccSpec);
+  RadioButton(h,v+=16,3,0,"Ai_nult kas. grupid",AccSpec);
+  RadioButton(h,v+=16,4,0,"Ain_ult saldoga",AccSpec);
+  end;
+  EndFrame;
+  if (HasBase2) then begin
+  ButtonFrame(h=230,v=vm+30,123,2,"VŠŠrtused");
+  RadioButton(h,v,0,0,"Baasvaluutas _1",basecurncy);
+  RadioButton(h,v+=16,1,0,"Baasvaluutas _2",basecurncy);
+  end;
+  EndWindow;
+end;
+
+window HalDelRecordVClass:1
+  wtag("language","EST"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real h,v,vs;
+  WindowBegin("Selection Delete Record",HalDelRecordVClass,CGMnt,RcType);
+  CheckBox(h=10,v=50,0,"Dokumentide kirjeldused(FormDefVc)",flags[1]);
+  SetWRect(64,80,549,350);
+  v= 6; vs = 20; h=120;
+  EditFieldTL(150,v, 150,"No.",   M4Str,Normal,30,f1,false,0);
+  EndWindow;
+end;
+//cust end

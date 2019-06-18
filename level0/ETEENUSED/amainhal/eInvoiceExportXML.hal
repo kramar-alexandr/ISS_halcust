@@ -1,0 +1,797 @@
+external procedure M4PadString(string,Integer,string,Boolean,var string);
+external function LongInt DateDiff(Date,Date);
+external procedure GetShipDealText(string,string,var string);
+external procedure GetShipModeText(string,string,var string);
+external function Boolean ReadFirstItem(string,var record INVc,Boolean,Boolean);
+external procedure MulVATIV(string,val,var val,var val,Integer,Integer);
+external function LongInt DaysInYear(Integer);
+//cust +
+external procedure BitSafeBase64EncodeAnArea(var area);
+external procedure EstEInvBuildString2(string,string,var string);
+external procedure EstEInvBuildString(string,string,integer,var string);
+external procedure EstEInvAddTag(string, string, var string,boolean, integer,area); 
+external procedure EstEInvTagValue(string,string,integer,area); 
+external procedure EstEInvTagNumber(string,val,area);
+external procedure EstEInvTagNumber2(string,val,boolean,area);
+external procedure EstEInvTagDate(string,date,area); 
+external procedure EstEInvTagValueType(string,string,string,integer,area);
+external procedure EstEInvStartTag2(string,var string,area);
+external procedure EstEInvStartTag(string,area);
+external procedure EstEInvEndTag(string,area);
+external procedure AddAreaAfterArea(var area,area);
+external procedure PopArea(var area,LongInt,var area);
+external function string 50 TimeToString(time,string,boolean);
+external procedure StripSpace(var string,string);
+external function string 255 AddStr(string,string,string);
+external procedure ExtractObjWithSeparator(string,string,Boolean,var Integer,var string);
+
+function val GetVATprc(string vatcode)
+BEGIN
+  record VATCodeBlock VATRec;
+  row VATCodeBlock VATrw;
+  Integer i,rwcnt;
+  val res;
+  
+  BlockLoad(VATRec);
+  rwcnt = MatRowCnt(VATRec);
+  for (i=i;i<rwcnt;i=i+1) begin
+    MatRowGet(VATRec,i,VATrw);
+    if (vatcode==VATrw.VATCode) then begin
+      res = VATrw.ExVatpr;
+      if (blank(res))  then begin
+        res = VATrw.ExVatpr;
+      end;  
+      i = rwcnt;
+    end;
+  end;
+  GetVATprc = res;
+  RETURN;
+END;
+
+procedure eInvoiceAddVAT(val sum,val rate,var record SMVc SMr) 
+begin
+  row SMVc SMrw;
+  integer i,rwcnt;
+  Boolean foundf;
+  
+  rwcnt = MatRowCnt(SMr);
+  for (i=0; i<rwcnt; i=i+1) begin
+    MatRowGet(SMr,i,SMrw);
+    if (SMrw.CredVal == rate) then begin
+      SMrw.DebVal = SMrw.DebVal + sum;
+      MatRowPut(SMr,i,Smrw);
+      foundf = true;
+      i = rwcnt;
+    end;
+  end;
+  if (foundf == false) then begin
+    ClearRow(SMr,Smrw,1);  
+    SMrw.DebVal = sum;
+    SMrw.CredVal = rate;
+    MatRowPut(SMr,rwcnt,Smrw);
+  end;
+  return;
+end;
+
+procedure eInvoicePrintVAT(record SMVc SMr,Boolean credinvf,var area a) 
+begin
+  row SMVc SMrw;
+  integer i,rwcnt;
+  val vatsum;
+  
+  rwcnt = MatRowCnt(SMr);
+  for (i=0; i<rwcnt; i=i+1) begin
+    MatRowGet(SMr,i,SMrw);
+    EstEInvStartTag("VAT",a);
+    EstEInvTagNumber2("SumBeforeVAT",SMrw.DebVal,credinvf,a);  
+    if (SMrw.CredVal!=-1) then begin // rate => -1 means that we have mixed rates // used in sum group
+      EstEInvTagNumber("VATRate",SMrw.CredVal,a);      
+    end;
+    vatsum = SMrw.DebVal*(SMrw.CredVal/100);
+    EstEInvTagNumber2("VATSum",vatsum,credinvf,a);
+    EstEInvEndTag("VAT",a);
+  end;
+  return;
+end;
+
+procedure eInvoiceAddExtensionEx(string extensionTagName,string extensionId,string infName,string infContent,var area a)
+begin
+  area a_tmp;
+  string 100 param;
+ 
+  EstEInvBuildString2("extensionId",extensionId,param);
+  EstEInvStartTag2(extensionTagName,param,a);
+  EstEInvTagValue("-InformationName",infName,250,a);
+  EstEInvTagValue("-InformationContent",infContent,250,a);
+  EstEInvEndTag(extensionTagName,a);
+  return;
+end;
+
+procedure eInvoiceAddExtension(string extensionId,string infName,string infContent,area a)
+begin
+  if (nonblank(infName) or nonblank(infContent)) then begin
+    eInvoiceAddExtensionEx("Extension",extensionId,infName,infContent,a);
+  end;
+  return;
+end;
+
+function boolean eInvoiceAddAttachment(record IVVc IVr,string reference,var area a)
+begin
+  area a_tmp;
+  record Attach2Vc Attachr;
+  record RLinkVc RLinkr;
+  Integer i;
+  String 100 tstr;
+  boolean abort;
+  
+  for (i=1; ReadRecordLink(IVr,i,Attachr,RLinkr); i=i+1) begin
+    if (Attachr.Uploading==0) then begin
+      SetAreaZeroSize(a_tmp);
+      AddAttachFileToArea(Attachr,a_tmp,0);
+      BitSafeBase64EncodeAnArea(a_tmp);
+      EstEInvBuildString2("invoiceId",reference,tstr);
+      EstEInvStartTag2("erp:PdfAttachment",tstr,a);
+      AddAreaAfterArea(a,a_tmp);
+      EstEInvEndTag("erp:PdfAttachment",a);
+      goto LSkipeInvoiceAddAttachment;
+    end else begin
+      abort = true;
+    end;
+  end;
+LSkipeInvoiceAddAttachment:;  
+  eInvoiceAddAttachment = !abort;
+  return;
+end;
+
+function boolean StackedInvoicesCheck(var area a)
+begin
+  boolean res;
+    
+  if (GetStringFromArea(a,GetAreaLength(a)-1,1)=="#") then begin 
+    res = true; 
+  end;
+  StackedInvoicesCheck = res;
+  return;
+end;
+
+procedure extractInvoiceData(var val totsum,var integer ivcount,var area a)
+begin
+  LongInt l;
+  LongInt alen;
+  area a_tmp;
+  
+  alen = GetAreaLength(a);
+  ivcount = 0;
+  totsum = 0;
+  if(StackedInvoicesCheck(a)) then begin 
+    ivcount = GetLongFromArea(a,alen-5);
+    totsum = StringToVal(GetStringFromArea(a,alen-35,30),M4Val);
+    l = GetAreaFromArea(a,0,alen-35,a_tmp);
+    SetAreaZeroSize(a);
+    InsertAreaBeforeArea(a_tmp,a);
+  end;
+  return;
+end;
+
+procedure eInvoiceAddressBlock(string title,string addr1,string addr2,string city,string postalcode,string country,area a) 
+begin
+  if (nonblank(addr1) and nonblank(city)) then begin
+    EstEInvStartTag(title,a);
+    EstEInvTagValue("PostalAddress1",addr1,100,a);
+    EstEInvTagValue("-PostalAddress2",addr2,100,a); 
+    EstEInvTagValue("City",city,100,a);
+    EstEInvTagValue("-PostalCode",postalcode,10,a);
+    EstEInvTagValue("-Country",country,100,a);
+    EstEInvEndTag(title,a);
+  end;
+  return;
+end;
+
+function string 255 GetEMailRecipients(string customer,string email,integer doctype,Boolean AddRecip)
+begin 
+  record CUVc CUr;
+  record EmailRecipVc EmailRecipr;
+  row EmailRecipVc EmailReciprw;
+  Integer i,rwcnt,pos;
+  string 255 tstr,res;
+    
+  tstr = "";
+  if (AddRecip) then begin
+    EmailRecipr.MainContactCode = customer;
+    if ReadFirstMain(EmailRecipr,1,true) then begin 
+      rwcnt = MatRowCnt(EmailRecipr);
+      for (i=0;i<rwcnt;i=i+1) begin
+        MatRowGet(EmailRecipr,i,EmailReciprw);
+        if (nonblank(EmailReciprw.ContactCode) and (EmailReciprw.DocType==doctype)) then begin 
+          CUr.Code = EmailReciprw.ContactCode;
+          if (ReadFirstMain(CUr,1,true)) then begin 
+            if (nonblank(CUr.eMail)) then begin 
+              pos = 0;
+              ExtractObjWithSeparator(";",CUr.eMail,true,pos,res);
+              while (nonblank(res)) begin
+                tstr = AddStr(tstr,res,",");
+                ExtractObjWithSeparator(";",CUr.eMail,true,pos,res);
+              end;   
+            end;   
+          end;
+        end;
+      end;  
+    end;
+  end;
+  if (blank(tstr) and nonblank(email)) then begin
+    pos = 0;
+    ExtractObjWithSeparator(";",email,true,pos,res);
+    while (nonblank(res)) begin
+      tstr = AddStr(tstr,res,",");
+      ExtractObjWithSeparator(";",email,true,pos,res);
+    end;   
+  end;
+  GetEMailRecipients = tstr;
+  return;
+end;
+
+procedure eInvoiceContactDetails(string name,string code,string phone,string fax,string www,string email,area a) 
+begin
+  EstEInvTagValue("ContactName",name,100,a);
+  EstEInvTagValue("-ContactPersonCode",code,15,a);
+  EstEInvTagValue("-PhoneNumber",phone,100,a);
+  EstEInvTagValue("-FaxNumber",fax,100,a);
+  EstEInvTagValue("-URL",www,100,a);
+//EstEInvTagValueType("-E-mailAddress",email,"EMAIL",100,a);
+  EstEInvTagValue("-E-mailAddress",email,100,a);
+  return;
+end;
+
+global
+function Boolean eInvoiceExportXML2(record IVVc IVr,var area stack,var area attach,Integer RcvInvoicePref,Integer RcvInvoicePref2,Boolean attachpdf,Boolean shortinfof,LongInt version,Boolean norwcomments)
+begin
+  area a_tmp,a; 
+  row IVVc IVrw;
+  Integer i,rwcnt,ivcount;
+  string 255 tstr,param,tstr2,refstr;
+  LongInt l,alen;
+  LongInt posBefore;
+  val t1,vatsum,totsum,vattotal;
+  val rebatesum;
+  val prepaytotal;
+  Boolean res,credinvf,testf;
+  LongInt duedate;
+  val taxsum,rowsum,t;
+  record CYBlock CYb;
+  record CUVc CUr;
+  record BankVc Bankr,CYBankr;
+  record INVc INr;
+  record SMVc vat_tmp;
+
+  BlockLoad(CYb);
+  CUr.Code = IVr.CustCode;
+  if (ReadFirstMain(CUr,1,true)) then begin end;
+  if (IVr.InvType==3) then begin 
+    credinvf = true;
+  end;
+  tstr = "ARVE" & (IVr.SerNr);
+  res = true;
+  if (attachpdf) then begin
+    res = eInvoiceAddAttachment(IVr,tstr,attach);   
+  end;
+  if (res) then begin
+    extractInvoiceData(totsum,ivcount,stack); 
+    ivcount = ivcount + 1;  
+    EstEInvBuildString("invoiceId",tstr,100,param);
+    StripSpace(tstr,CUr.RegNr1);
+    EstEInvBuildString("regNumber",tstr,15,param);
+    tstr = CUr.RegNr2;
+    if (blank(tstr)) then begin
+      tstr = IVr.CalcFinRef;
+    end;
+    StripSpace(refstr,tstr);
+    if (nonblank(CUr.RecipientGLN)) then begin
+      EstEInvBuildString("serviceId",CUr.RecipientGLN,20,param);
+    end else begin
+      EstEInvBuildString("serviceId",refstr,20,param);
+    end;
+    Bankr.Code = CUr.AccOperator;
+    if (ReadFirstMain(Bankr,1,true)) then begin
+      EstEInvBuildString("channelId",Bankr.SWIFT,11,param);
+    end;
+    tstr = CUr.BankAccount;
+    if (blank(tstr)) then begin
+      tstr = CUr.IBANCode;
+    end;  
+    EstEInvBuildString("channelAddress",tstr,35,param);
+    if (shortinfof) or (credinvf) then begin
+      EstEInvBuildString("presentment","NO",35,param);
+    end else begin
+      EstEInvBuildString("presentment","YES",35,param);
+    end;
+    EstEInvBuildString("sellerRegnumber",CYb.OrgNr,15,param);
+    EstEInvBuildString("invoiceGlobUniqId",IVr.SerNr & "_" & version,15,param);
+    if (nonblank(Bankr.ExchangeRateContract)) then begin
+      EstEInvBuildString("sellerContractId",Bankr.ExchangeRateContract,15,param);
+    end;
+//    EstEInvBuildString("templateId","",15,param);
+//    EstEInvBuildString("languageId","et",2,param);  
+    EstEInvStartTag2("Invoice",param,a);
+
+    EstEInvStartTag("InvoiceParties",a);
+
+    EstEInvStartTag("SellerParty",a);
+    EstEInvTagValue("UniqueCode",IVr.CustCode,20,a);
+    EstEInvTagValue("Name",CYb.CompName,100,a);
+    EstEInvTagValue("-DepId",IVr.BranchID,100,a);
+    EstEInvTagValue("RegNumber",CYb.OrgNr,15,a);
+    EstEInvTagValue("-VATRegNumber",CYb.VATNr,15,a);
+
+    EstEInvStartTag("ContactData",a);
+    eInvoiceContactDetails(IVr.OurContact,"",CYb.Phone,CYb.Fax,CYb.wwwAddr,CYb.emailAddr,a);
+    eInvoiceAddressBlock("MailAddress",CYb.Addr0,"",CYb.Addr1,CYb.Addr2,CYb.CountryCode,a); 
+    EstEInvEndTag("ContactData",a);
+
+    EstEInvStartTag("AccountInfo",a);     
+    if (nonblank(Bankr.Nr2)) then begin
+      EstEInvTagValueType("-AccountNumber",Bankr.Nr2,"CAPSINT",35,a);    
+      EstEInvTagValue("-IBAN",Bankr.Nr2,35,a);
+      EstEInvTagValue("-BIC",Bankr.SWIFT,11,a);
+      EstEInvTagValue("BankName",Bankr.Name,100,a);
+    end else begin
+      EstEInvTagValueType("-AccountNumber",CYb.Bank2,"CAPSINT",35,a);    
+      CYBankr.Code = CYb.BankCode;
+      if (ReadFirstMain(CYBankr,1,true)) then begin
+        if (blank(CYBankr.Nr2)) then begin
+          EstEInvTagValue("-IBAN",CYb.Bank2,35,a);
+        end else begin
+          EstEInvTagValue("-IBAN",CYBankr.Nr2,35,a);
+        end;
+        EstEInvTagValue("-BIC",CYBankr.SWIFT,11,a);
+        EstEInvTagValue("BankName",CYBankr.Name,100,a);  
+      end;
+    end;
+    EstEInvEndTag("AccountInfo",a);
+
+    EstEInvEndTag("SellerParty",a);
+
+    EstEInvStartTag("BuyerParty",a);
+    EstEInvTagValue("UniqueCode",IVr.CustCode,20,a);
+    EstEInvTagValue("Name",IVr.Addr0,100,a);
+    EstEInvTagValue("-DepId",IVr.BranchID,100,a);  
+    EstEInvTagValue("RegNumber",CUr.RegNr1,15,a);
+    EstEInvTagValue("-VATRegNumber",CUr.VATNr,15,a);
+
+    EstEInvStartTag("ContactData",a);
+    if (RcvInvoicePref == 20) or (RcvInvoicePref2 == 20) then begin
+      tstr = GetEMailRecipients(CUr.Code,CUr.eMail,kMailInvoice,true);
+    end else begin
+      tstr = GetEMailRecipients(CUr.Code,CUr.eMail,kMailInvoice,false);
+    end;
+    eInvoiceContactDetails(IVr.ClientContact,"",CUr.Phone,CUr.Fax,"",tstr,a);
+    eInvoiceAddressBlock("MailAddress",IVr.Addr1,IVr.Addr2,IVr.Addr3,IVr.InvAddr3,IVr.InvAddr4,a);
+    EstEInvEndTag("ContactData",a);
+
+    if (nonblank(CUr.BankAccount)) then begin
+      EstEInvStartTag("AccountInfo",a);     
+      EstEInvTagValueType("-AccountNumber",CUr.BankAccount,"CAPSINT",35,a);    
+      EstEInvTagValue("-IBAN",CUr.BankAccount,35,a);
+      EstEInvTagValue("-BIC",Bankr.SWIFT,11,a);
+      EstEInvTagValue("-BankName",Bankr.Name,100,a);
+      EstEInvEndTag("AccountInfo",a);
+    end;
+
+    EstEInvEndTag("BuyerParty",a);
+
+    if (nonblank(IVr.ShipAddr0)) then begin  
+      EstEInvStartTag("DeliveryParty",a);
+      EstEInvTagValue("UniqueCode",CUr.RegNr1,20,a);
+      EstEInvTagValue("Name",IVr.Addr0,100,a);
+
+      EstEInvStartTag("ContactData",a);
+      EstEInvTagValue("ContactName","",100,a);
+      EstEInvTagValue("ContactPersonCode","",15,a);
+      EstEInvTagValue("PhoneNumber","",100,a);
+      EstEInvTagValue("FaxNumber","",100,a);
+      EstEInvTagValueType("-E-mailAddress",CUr.eMail,"EMAIL",100,a);
+      eInvoiceAddressBlock("MailAddress",IVr.ShipAddr0,IVr.ShipAddr1,IVr.ShipAddr2,IVr.ShipAddr3,IVr.DelAddr3,a);
+      EstEInvEndTag("ContactData",a);
+
+      EstEInvEndTag("DeliveryParty",a);
+    end;
+    EstEInvEndTag("InvoiceParties",a);
+
+    EstEInvStartTag("InvoiceInformation",a);
+    tstr = "DEB";  
+    if (IVr.InvType==3) then begin tstr = "CRE"; end;
+    EstEInvBuildString2("type",tstr,param);
+    if (IVr.InvType==3) then begin
+      MatRowGet(IVr,0,IVrw);
+      EstEInvStartTag2("Type",param,a);
+      EstEInvTagValue("SourceInvoice",IVrw.OrdRow,100,a);
+      EstEInvEndTag("Type",a);              
+    end else begin
+      EstEInvAddTag("Type","",param,false,0,a);
+    end;
+//cust - begin: TS 2017/09
+    if (nonblank(IVr.CustOrdNr)) then begin
+      EstEInvTagValue("ContractNumber",IVr.CustOrdNr,100,a);
+    end;
+//cust - end
+    tstr = "Arve";  
+    if (IVr.InvType == 3) then begin tstr = "Kreeditarve"; end;
+    if (IVr.InvType == 4) then begin tstr = "Viivisarve"; end;
+    EstEInvTagValue("DocumentName",tstr,100,a);
+    EstEInvTagValue("InvoiceNumber",IVr.SerNr,100,a);
+    EstEInvTagValueType("-PaymentReferenceNumber","","INT",20,a);
+    EstEInvTagValue("-PaymentMethod","",100,a);
+    EstEInvTagDate("InvoiceDate",IVr.InvDate,a);  
+    EstEInvTagDate("DueDate",IVr.PayDate,a);
+    duedate = DateDiff(IVr.PayDate,IVr.InvDate);
+    EstEInvTagValue("PaymentTerm",USetStr(33500) & " " & duedate & " " & USetStr(33501),100,a); 
+    t = StringToVal(IVr.IntCode,M4Val)/365;
+    if (credinvf) then begin
+      t = 0;
+    end;
+    EstEInvTagNumber("FineRatePerDay",t,a);       
+
+    EstEInvStartTag("InvoiceDeliverer",a);
+    eInvoiceContactDetails(IVr.SalesMan,"","","","",CYb.emailAddr,a);
+    eInvoiceAddressBlock("MailAddress",CYb.Addr0,"",CYb.Addr1,CYb.Addr2,CYb.CountryCode,a);
+    EstEInvEndTag("InvoiceDeliverer",a);
+
+    if (RcvInvoicePref > 0) then begin
+      switch (RcvInvoicePref) begin
+        case kEInvoiceRcvPreferenceElectronic:
+          eInvoiceAddExtension("eakChannel","","PORTAL",a);
+        case kEInvoiceRcvPreferencePaper:
+          eInvoiceAddExtension("eakChannel","","POST",a);
+        case 20:
+          eInvoiceAddExtension("eakChannel","","EMAIL",a);
+        case 21:
+          eInvoiceAddExtension("eakChannel","","INTERNET_BANK",a);
+      end;
+    end;
+    if (RcvInvoicePref2 > 0) then begin
+      switch (RcvInvoicePref2) begin
+        case kEInvoiceRcvPreferenceElectronic:
+          eInvoiceAddExtension("eakChannel","","PORTAL",a);
+        case kEInvoiceRcvPreferencePaper:
+          eInvoiceAddExtension("eakChannel","","POST",a);
+        case 20:
+          eInvoiceAddExtension("eakChannel","","EMAIL",a);
+        case 21:
+          eInvoiceAddExtension("eakChannel","","INTERNET_BANK",a);
+      end;
+    end;
+    eInvoiceAddExtension("eakStatusAfterImport","","SENT",a); // IMPORTED (sent to eAK) | SENT (sent to Recipient)
+    eInvoiceAddExtension("SoftwareId","",BuildProductCode & "_" & HansaVersion,a);
+    GetShipDealText(IVr.ShipDeal,IVr.LangCode,tstr);
+    eInvoiceAddExtension("DeliveryTerm",tstr,IVr.ShipDeal,a);
+    GetShipModeText(IVr.ShipMode,IVr.LangCode,tstr);
+    eInvoiceAddExtension("DeliveryMode",tstr,IVr.ShipMode,a);
+    EstEInvEndTag("InvoiceInformation",a);
+  
+    posBefore = GetAreaLength(a);
+    
+    EstEInvStartTag("InvoiceItem",a);
+
+    EstEInvStartTag("InvoiceItemGroup",a);
+    rwcnt = MatRowCnt(IVr);
+    vatsum = 0;
+    rebatesum = 0;
+    vattotal = 0;
+    prepaytotal = 0;
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(IVr,i,IVrw);
+      switch(IVrw.stp) begin
+        case kInvoiceRowTypeHidden:
+          goto LSkipOtherRows;
+        case kInvoiceRowTypeNormal:
+          // [COMM/] just some text on the row
+          if (IVrw.ArtCode=="") then begin
+            if (norwcomments==false) and nonblank(IVrw.Spec) and (IVrw.Spec!=" ") then begin
+              EstEInvStartTag("ItemEntry",a);
+              EstEInvTagValue("Description",IVrw.Spec,100,a);
+              EstEInvStartTag("VAT",a);
+              EstEInvTagValue("SumBeforeVAT","0.00",100,a);
+              EstEInvTagValue("VATRate","0.00",100,a);
+              EstEInvTagValue("VATSum","0.00",100,a);
+              EstEInvEndTag("VAT",a);
+              EstEInvTagValue("ItemTotal","0.00",100,a);
+              EstEInvEndTag("ItemEntry",a);          
+            end;
+          end else begin
+            EstEInvStartTag("ItemEntry",a);
+            if (ReadFirstItem(IVrw.ArtCode,INr,true,false)) then begin end;
+            EstEInvTagValue("-SerialNumber",IVrw.SerialNr,20,a);
+//            EstEInvTagValue("-FinalReading",IVrw.SerialNr,20,a);          
+            EstEInvTagValue("SellerProductId",IVrw.ArtCode,20,a);
+            EstEInvTagValue("BuyerProductId",IVrw.ArtCode,20,a); 
+            EstEInvTagValue("-TaricCode","",10,a);
+            EstEInvTagValueType("-CustomerRef",IVr.OrderNr,"NONZERO-POSINT",100,a);
+            EstEInvTagValue("Description",IVrw.Spec,100,a);
+            EstEInvTagValue("-EAN",INr.BarCode,100,a);
+            EstEInvStartTag("ItemDetailInfo",a);
+            EstEInvTagValue("ItemUnit",IVrw.UnitCode,20,a);
+            EstEInvTagNumber("ItemAmount",IVrw.Quant,a);
+            EstEInvTagNumber2("ItemPrice",IVrw.Price,credinvf,a);
+            EstEInvEndTag("ItemDetailInfo",a);
+            EstEInvTagNumber2("ItemSum",(IVrw.Quant*IVrw.Price),credinvf,a);
+            if(IVrw.vRebate<>0) then begin
+              tstr = "DSC";
+              if(IVrw.vRebate<0) then begin 
+                tstr = "CHR"; 
+              end;
+              EstEInvBuildString2("addCode",tstr,param);
+              EstEInvStartTag2("Addition",param,a);
+              EstEInvTagValue("AddContent","Soodustus " & ValToString(IVrw.vRebate,M4Val,"",".",0) & "%",50,a);
+              EstEInvTagNumber2("AddRate",-(IVrw.vRebate),credinvf,a);
+              EstEInvTagNumber2("AddSum",((-(IVrw.vRebate)/100)*IVrw.Quant*IVrw.Price),credinvf,a);
+              EstEInvEndTag("Addition",a);              
+              rebatesum = rebatesum + ((-(IVrw.vRebate)/100)*IVrw.Quant*IVrw.Price);
+            end;
+            t1 = IVrw.Sum;
+            rowsum = IVrw.Sum;
+            if (IVr.InclVAT==0) then begin 
+              MulVATIV(IVrw.VATCode,IVrw.Sum,vatsum,taxsum,IVr.InclVAT,IVr.NoTAXonVAT);
+              t1 = t1 + vatsum + taxsum;
+            end else begin
+              rowsum = IVrw.Sum - vatsum;
+            end;
+            EstEInvStartTag("VAT",a);
+            EstEInvTagNumber2("SumBeforeVAT",rowsum,credinvf,a);
+            t = GetVATprc(IVrw.VATCode);
+            if (blank(t)) then begin
+              t = 0;
+            end;
+            EstEInvTagNumber("VATRate",t,a);      
+            if (IVr.InclVAT==0) then begin 
+              eInvoiceAddVAT(IVrw.Sum,t,vat_tmp);
+            end;
+            t = vatsum + taxsum;
+            if (blank(t)) then begin
+              EstEInvTagValue("VATSum","0.00",100,a);
+            end else begin
+              if (credinvf) then begin
+                t = -t;
+              end;
+              EstEInvTagValue("VATSum",ValToString(t,M423Val,"",".",0),100,a);
+            end;
+            EstEInvTagValue("Currency",IVr.CurncyCode,100,a);
+            EstEInvEndTag("VAT",a);
+            EstEInvTagNumber2("ItemTotal",t1,credinvf,a);  
+            EstEInvEndTag("ItemEntry",a);          
+          end;             
+/*
+        case kInvoiceRowTypeSubtotal:
+          EstEInvStartTag("ItemEntry",a);
+          EstEInvTagValue("Description","Vahesumma",100,a);
+          EstEInvStartTag("ItemDetailInfo",a);     
+          EstEInvTagNumber2("ItemPrice",IVrw.Sum,credinvf,a);     
+          EstEInvEndTag("ItemDetailInfo",a);
+          EstEInvEndTag("ItemEntry",a);
+*/
+        case kInvoiceRowTypeInterest:
+          EstEInvStartTag("ItemEntry",a);
+          EstEInvTagValue("Description","Viivis",100,a);
+          EstEInvTagNumber2("ItemSum",IVrw.Sum,credinvf,a);
+          EstEInvStartTag("VAT",a);
+          EstEInvTagNumber2("SumBeforeVAT",IVrw.Sum,credinvf,a);
+          t1 = IVrw.Sum;
+          rowsum = IVrw.Sum;
+          if (IVr.InclVAT==0) then begin 
+            MulVATIV(IVrw.VATCode,IVrw.Sum,vatsum,taxsum,IVr.InclVAT,IVr.NoTAXonVAT);
+            t1 = t1 + vatsum + taxsum;
+          end else begin
+            rowsum = IVrw.Sum - vatsum;
+          end;
+          t = GetVATprc(IVrw.VATCode);
+          if (blank(t)) then begin
+            t = 0;
+          end;
+          EstEInvTagNumber("VATRate",t,a);      
+          if (IVr.InclVAT==0) then begin 
+            eInvoiceAddVAT(IVrw.Sum,t,vat_tmp);
+          end;
+          t = vatsum + taxsum;
+          if (blank(t)) then begin
+            EstEInvTagValue("VATSum","0.00",100,a);          
+          end else begin
+            if (credinvf) then begin
+              t = -t;
+            end;
+            EstEInvTagValue("VATSum",ValToString(t,M423Val,"",".",0),100,a);     
+          end;
+          EstEInvEndTag("VAT",a);          
+          EstEInvTagNumber2("ItemTotal",t1,credinvf,a);  
+          EstEInvEndTag("ItemEntry",a);
+        case kInvoiceRowTypeHeader: 
+          EstEInvStartTag("ItemEntry",a);
+          EstEInvTagValue("Description",IVrw.Spec,100,a);
+          EstEInvEndTag("ItemEntry",a);     
+        case kInvoiceRowTypeHTSVATSummary:
+          if (IVr.InclVAT==0) then begin 
+            MulVATIV(IVrw.VATCode,IVrw.Price,vatsum,taxsum,IVr.InclVAT,IVr.NoTAXonVAT);
+            vattotal = vattotal + vatsum + taxsum;
+          end;
+        case kInvoiceRowTypePrepayment:
+          prepaytotal = prepaytotal + IVrw.Sum;
+      end;
+    end;
+LSkipOtherRows:;
+    EstEInvEndTag("InvoiceItemGroup",a);
+    
+    EstEInvEndTag("InvoiceItem",a);
+    PopArea(a,posBefore,a_tmp); 
+
+    EstEInvStartTag("InvoiceSumGroup",a);  
+    if(prepaytotal>0) then begin
+      EstEInvStartTag("Balance",a);
+      EstEInvTagDate("BalanceDate",IVr.InvDate,a);  
+      EstEInvTagNumber2("BalanceBegin",0,credinvf,a);  
+      EstEInvTagNumber2("Inbound",prepaytotal,credinvf,a); // opt: OutBound
+      EstEInvTagNumber2("BalanceEnd",prepaytotal,credinvf,a);
+      EstEInvEndTag("Balance",a);    
+    end;
+    EstEInvTagNumber2("InvoiceSum",IVr.Sum1,credinvf,a);
+    eInvoicePrintVAT(vat_tmp,credinvf,a);
+    t = IVr.Sum3;
+//  if (t==blankval) or (credinvf) then begin
+    if (t==blankval) then begin
+      t = 0;
+    end;
+    EstEInvTagNumber2("TotalVATSum",t,credinvf,a); 
+    EstEInvTagNumber2("TotalSum",IVr.Sum4,credinvf,a);
+    t1 = IVr.Sum4-prepaytotal;
+    if(IVr.InvType==3) then begin
+      t1 = 0;
+    end;
+    EstEInvTagNumber2("TotalToPay",t1,credinvf,a); 
+    EstEInvTagValueType("Currency",IVr.CurncyCode,"CAPS",3,a);
+    EstEInvEndTag("InvoiceSumGroup",a);
+
+    AddAreaAfterArea(a,a_tmp);   
+    EstEInvStartTag("AdditionalInformation",a);
+    EstEInvTagValue("-InformationName","Comment",100,a);
+    EstEInvTagValue("InformationContent",IVr.InvComment,250,a); 
+    EstEInvEndTag("AdditionalInformation",a);
+    EstEInvStartTag("PaymentInfo",a);
+    EstEInvTagValueType("Currency",IVr.CurncyCode,"CAPS",3,a);
+    EstEInvTagValue("PaymentRefId",refstr,100,a);   // At least one of those: PaymentDescription OR PaymentRefId (not implemented)
+    EstEInvTagValue("PaymentDescription",IVr.SerNr,100,a);
+    if (AddDay(IVr.PayDate,2)<CurrentDate) or (credinvf) then begin
+      EstEInvTagValue("Payable","NO",3,a);
+    end else begin
+      EstEInvTagValue("Payable","YES",3,a);
+    end;
+    EstEInvTagDate("PayDueDate",IVr.PayDate,a);
+    t1 = IVr.Sum4-prepaytotal;
+    if(IVr.InvType==3) then begin
+      t1 = 0;
+    end;
+    EstEInvTagNumber2("PaymentTotalSum",t1,credinvf,a);
+    EstEInvTagValue("PayerName",IVr.Addr0,100,a);
+    tstr = "ARVE"&(IVr.SerNr);
+    EstEInvTagValue("PaymentId",tstr,100,a);
+    if (nonblank(CYb.EInvoiceAccount)) then begin
+      CUr.Code = CYb.EInvoiceAccount;
+      if (ReadFirstMain(CUr,1,true)) then begin
+        testf = true;
+        tstr = CUr.BankAccount;
+        if (blank(tstr)) then begin
+          tstr = CUr.IBANCode;
+        end;
+        EstEInvTagValueType("PayToAccount",tstr,"CAPSINT",35,a);
+        EstEInvTagValue("PayToName",CUr.Name,100,a); 
+      end;
+    end;
+    if (testf == false) then begin
+      if (nonblank(Bankr.Nr2)) then begin
+        EstEInvTagValueType("PayToAccount",Bankr.Nr2,"CAPSINT",35,a);
+      end else begin
+        if (blank(Bankr.Nr2)) then begin
+          EstEInvTagValueType("PayToAccount",CYb.Bank2,"CAPSINT",35,a);
+        end else begin
+          EstEInvTagValueType("PayToAccount",CYBankr.Nr2,"CAPSINT",35,a);
+        end;
+      end;
+      EstEInvTagValue("PayToName",CYb.CompName,100,a); 
+    end;
+    EstEInvEndTag("PaymentInfo",a);
+
+    EstEInvEndTag("Invoice",a);
+
+    if (credinvf) then begin
+      t = totsum - IVr.Sum4 + prepaytotal;
+    end else begin
+      t = totsum + IVr.Sum4 - prepaytotal;
+    end;
+    if (blank(t)) then begin
+      t = 0;
+    end;
+    tstr = ValToString(t,M4Val,"",".",0);
+    M4PadString(tstr,30," ",true,tstr2);
+    AddTextToArea(tstr2,a);
+    AddLongToArea(ivcount,a);
+    AddTextToArea("#",a);
+    AddAreaAfterArea(stack,a);
+  end;
+  eInvoiceExportXML2 = res;
+  return;
+end;
+
+global
+function Boolean eInvoiceExportXML(record IVVc IVr,var area stack,var area attach,Integer RcvInvoicePref,Integer RcvInvoicePref2,Boolean attachpdf,Boolean shortinfof,LongInt version)
+begin
+  eInvoiceExportXML = eInvoiceExportXML2(IVr,stack,attach,RcvInvoicePref,RcvInvoicePref2,attachpdf,shortinfof,version,false);
+  return;
+end;
+
+global
+procedure eInvoiceExportXMLHeader(var area a,var area attachments,Integer TestFlag,Boolean Expf)
+begin
+  record CYBlock CYb;
+  string 255 tstr;
+  Integer ivcount;
+  area ivheader;
+  val totsum;
+  Boolean credinvf;
+
+  BlockLoad(CYb);
+  if (Expf) then begin
+    EstEInvStartTag("?xml version=""1.0"" encoding=""UTF-8""?",ivheader);  
+    EstEInvStartTag("E_Invoice xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xsi:noNamespaceSchemaLocation=""e-invoice_ver1.11.xsd""",ivheader);
+  end else begin
+    EstEInvStartTag("E_Invoice",ivheader);
+  end;
+  EstEInvStartTag("Header",ivheader);
+  if (TestFlag == 1) then begin
+    EstEInvTagValue("Test","YES",0,ivheader);
+  end else begin
+    EstEInvTagValue("Test","NO",0,ivheader);
+  end;
+  EstEInvTagDate("Date",CurrentDate,ivheader);
+  tstr = DateToString(CurrentDate,"YYYYMMDD") & TimeToString(CurrentTime,"HHMMSS",false) & GetCurTick();
+  EstEInvTagValue("FileId",tstr,20,ivheader);
+  EstEInvTagValue("AppId","EARVE",20,ivheader);
+  EstEInvTagValue("Version","1.11",20,ivheader);
+  EstEInvTagValue("-SenderId","ENTERPRISE_HTS",20,ivheader);
+  EstEInvTagValueType("-PayeeAccountNumber",CYb.Bank2,"CAPSINT",20,ivheader);
+  EstEInvEndTag("Header",ivheader);
+
+  extractInvoiceData(totsum,ivcount,a);
+  InsertAreaBeforeArea(ivheader,a);
+  EstEInvStartTag("Footer",a);
+
+  EstEInvTagValue("TotalNumberInvoices",ivcount,0,a);
+  EstEInvTagNumber2("TotalAmount",totsum,credinvf,a); 
+  EstEInvEndTag("Footer",a);
+
+  EstEInvEndTag("E_Invoice",a);
+
+  AddAreaAfterArea(a,attachments);
+  SetAreaZeroSize(attachments);
+  return;
+end;
+
+global
+procedure eInvoiceEn(record RcVc RepSpec)
+begin
+  string 255 filename,tstr;
+  record IVVc IVr;
+  LongInt lines,l;
+  area a,tmp;
+  
+  IVr.SerNr = RepSpec.f1;
+  if (ReadFirstMain(IVr,1,true)) begin
+    if (eInvoiceExportXML2(IVr,a,tmp,0,0,false,RepSpec.flags[1]==1,0,false)) then begin
+      eInvoiceExportXMLHeader(a,tmp,RepSpec.flags[0],true);
+      filename = "tmp/Arve" & IVr.SerNr & ".xml";
+      CreateFile(filename);
+      lines = CountLinesInArea(a);  
+      for (l=0;l<lines-1;l=l+1) begin
+        tstr = GetLineFromArea(a,l);
+        ExportString(tstr);
+        NewLine;
+      end;
+      CloseFile;
+    end;
+  end;
+  return;
+end;

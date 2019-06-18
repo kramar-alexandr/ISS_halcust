@@ -1,0 +1,22 @@
+event startup
+begin
+  SetLangMode(LangEstonian,"EST",0);
+
+  SString(1023408,"jaan.");
+  SString(1023409,"veebr.");
+  SString(1023410,"märts");
+  SString(1023411,"apr.");
+  SString(1023412,"mai");
+  SString(1023413,"juuni");
+  SString(1023414,"juuli");
+  SString(1023415,"aug.");
+  SString(1023416,"sept.");
+  SString(1023417,"okt.");
+  SString(1023418,"nov.");
+  SString(1023419,"dets.");
+  SString(1023420,"Perioodis on rohkem kui 12 kuud");
+
+  SString(34575,"erikord");
+
+  return;
+end;

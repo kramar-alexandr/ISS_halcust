@@ -1,0 +1,22 @@
+//cust start
+updating procedure DeleteDocdef()
+begin
+  record FormDefVc CLInr;
+  
+  ResetLoop(CLInr);
+  while(LoopMain(CLInr,1,true))begin
+    RecordDelete(CLInr);
+    StepBack(CLInr);
+  end;
+  return;
+end;
+
+global
+updating procedure HalDelRecordMn(record RcVc RepSpec)
+begin
+  if(RepSpec.flags[1]==1)then begin
+    DeleteDocdef;
+  end;
+  return;
+end;
+//cust end

@@ -1,0 +1,58 @@
+external inner procedure MainRClassReportDef(var record RcVc);
+
+procedure DblNLFunc(string dblstr,string adstr,Integer currepwn,Integer cons)
+begin
+  Integer wn;
+  record RcVc curRepSpec;
+  record RcVc RepSpec;
+  Integer comp,i,month;
+  date sd,ed;
+  string 255 accstr;
+  string 2 c,m;
+  
+  if (nonblank(dblstr)) then begin
+    GetWIndowRecord(currepwn,curRepSpec);
+    for (i=0;i<len(adstr);i=i+1) begin
+      c=Mid(adstr,i,1);
+      if (c=="+") then begin
+        m=Mid(adstr,i+1,len(adstr)-i);
+        goto L1;
+      end else begin  
+        accstr=accstr & c;
+      end;
+    end;
+L1:;
+    month=StringToInt(m)-1; 
+    sd=AddMonth(curRepSpec.sStartDate,month);
+    sd.day=1;
+    ed=sd;
+    ed.day=DaysInMonth(GetYear(sd),GetMonth(sd));
+        
+    comp = CurrentCompany;
+    ReportDefaults(RepSpec,"MainRClass");    
+    MainRClassReportDef(RepSpec);
+    RepSpec.repname = "MainCustRn"; //cust
+    RepSpec.Media = mtScreen;
+    RepSpec.basecurncy = curRepSpec.basecurncy;
+    
+    RepSpec.stoff = -1;
+    RepSpec.f4 = accstr;
+    RepSpec.CurncyCode = curRepSpec.CurncyCode;
+    RepSpec.sStartDate = sd;
+    RepSpec.sEndDate = ed;
+    RepSpec.Period2Str2 = sd & ":" & ed;
+    RepSpec.ObjStr = curRepSpec.ObjStr;
+    RepSpec.ObjType = curRepSpec.ObjType;
+    RepSpec.IncDaughter = cons;
+    RepSpec.flags[29] = comp;
+    RunReport(RepSpec,0);   
+  end;
+  return;
+end;
+
+global
+procedure DblNLSpecCust(string dblstr,string adstr,Integer currepwn)
+begin
+  DblNLFunc(dblstr,adstr,currepwn,1);
+  return;
+end;

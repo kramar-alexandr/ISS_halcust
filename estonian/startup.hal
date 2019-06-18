@@ -1,0 +1,17 @@
+event startup
+begin
+  SetLangMode(LangEstonian,"EST",0);
+
+  Maintenance("Delete Records",HalDelRecordVClass,HalDelRecordMn,modSY);
+  Report("Kasumiaruanne kuude l›ikes",MonthResRClass,MonthResRn,0,modNL); //Booksi aruanne 
+  Maintenance("MŠŠra e-arve kanalid",DefEInvRcvPrefVClass,DefEInvRcvPrefMn,modSL);//Bk //##ii
+  
+  SetBegin(667);
+  SetText(0,"Vali teenus");
+  SetText(1,"HansaWorld"); 
+  SetText(2,"Arvete saatmine (Omniva)");
+  SetText(3,"Tarnija arvete vastuv›tmine (Omniva)");
+  EndSet;
+
+  return;
+end;

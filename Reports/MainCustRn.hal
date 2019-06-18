@@ -1,0 +1,431 @@
+//81160331 /JL 201604
+external inner procedure OutEmpty(record RcVc,Integer);
+external inner function Boolean HasMultiCurrency();
+external inner procedure ClearAcums();
+external inner procedure ListPerTrans(record RcVc);
+external inner function Boolean DatePrel(Date);
+external inner procedure HTVatNr(string,var string);
+external inner procedure HTOT(string,var string);
+external inner procedure HTObj(string,var string);
+external inner procedure HTAccPer(Date,Date,var string);
+external inner procedure HT2Per(Date, Date , var string);
+external inner procedure LstRegDat(var string);
+external inner procedure HTAccs(string,string,Integer, var string);
+external inner procedure FindAccSD(Date,var Date,var Boolean);
+external inner procedure RunMainRn(var record RcVc,Boolean,Date,var Boolean,var val,var val,record SMVc,Boolean,var val,var val,var LongInt);
+
+procedure PrintVATCodesSubtotals(record RcVc RepSpec,record SMVc VATSumr)
+BEGIN
+  val totdeb,totcred;
+  string 255 tstr;
+  Integer j,rwcnt;
+  Integer i,vatrows;
+  row SMVc VATSumrw;
+  record VATCodeBlock VATCodeRec;
+  row VATCodeBlock VATCoderw;
+  
+  vatrows = MatRowCnt(VATSumr);
+  BlockLoad(VATCodeRec);
+  rwcnt = MatRowCnt(VATCodeRec);
+  StartFormat(15);
+  EndFormat;
+  StartFormat(15);
+  OutString(60,0,USetStr(3198),false);
+  OutEmpty(RepSpec,1);
+  OutString(3,0,USetStr(3187),true);
+  OutString(4,0,USetStr(3188),true);
+  EndFormat;
+  Gray_Divider(100,4);
+  for (i=0;i<vatrows;i=i+1) begin
+    MatRowGet(VATSumr,i,VATSumrw);
+    for (j=0;j<rwcnt;j=j+1) begin
+      MatRowGet(VATCodeRec,j,VATCoderw);
+      if (VATSumrw.VATCode==VATCoderw.VATCode) then begin
+        tstr = VATCoderw.Comment;
+      end;
+    end;
+    StartFormat(15);
+    OutString(60,0,VATSumrw.VATCode,false);
+    OutString(90,0,tstr,false);
+    OutVal(3,0,VATSumrw.DebVal,M4Val,true);
+    OutVal(4,0,VATSumrw.CredVal,M4Val,true);
+    EndFormat;
+    totdeb = totdeb + VATSumrw.DebVal;
+    totcred = totcred + VATSumrw.CredVal;
+  end;
+  Gray_Divider(100,4);
+  StartFormat(15);
+  OutEmpty(RepSpec,2);
+  OutVal(3,0,totdeb,M4Val,true);
+  OutVal(4,0,totcred,M4Val,true);
+  EndFormat;
+  RETURN;      
+END;
+
+procedure MainListTopHdrs(record RcVc RepSpec,Boolean resUseAccum,Date AccumStartDate)
+BEGIN
+  string 255 tstr;
+  Integer rw;
+  record BaseCurBlock BC;
+  
+  BlockLoad(BC);
+      
+  rw = 1;
+  HTAccs(RepSpec.f4,RepSpec.f4,RepSpec.UsedOnly,tstr);
+  Header(rw,tstr,1);
+  rw = rw + 1;
+  LstRegDat(tstr);
+  Header(rw,tstr,0);
+  HT2Per(RepSpec.sStartDate,RepSpec.sEndDate,tstr);
+  Header(rw,tstr,1);
+  rw = rw + 1;
+  
+  if (HasMultiCurrency) then begin
+    tstr = USetStr(2513);
+    if (blank(RepSpec.CurncyCode)) then begin
+      BlockLoad(BC);
+      if (repspec.basecurncy==0) then begin
+        tstr = tstr & BC.BaseCur1;
+      end;
+      if (repspec.basecurncy==1) then begin
+        tstr = tstr & " " & BC.BaseCur2;
+      end;
+    end else begin
+      tstr = tstr & " " & RepSpec.CurncyCode;
+    end;
+    Header(rw,tstr,0);
+  end;
+
+  if (resUseAccum) then begin
+    HTAccPer(AccumStartDate,RepSpec.sEndDate,tstr);
+    Header(rw,tstr,1);
+    rw = rw + 1;
+  end;
+  if (nonblank(RepSpec.ObjStr)) then begin
+    HTObj(RepSpec.ObjStr,tstr);
+    Header(rw,tstr,1);
+    rw = rw + 1;
+  end;
+  if (nonblank(RepSpec.ObjType)) then begin
+    HTOT(RepSpec.ObjType,tstr);
+    Header(rw,tstr,1);
+    rw = rw + 1;
+  end;
+  if (nonblank(RepSpec.Stext)) then begin
+    tstr = USetStr(3018);
+    tstr = tstr & RepSpec.Stext;
+    tstr = tstr & "\"";
+    Header(rw,tstr,1);
+    rw = rw + 1;
+  end;
+  HTVatNr(RepSpec.f1,tstr);
+  if (nonblank(tstr)) then begin
+    Header(rw,tstr,1);
+    rw = rw + 1;
+  end;
+  if (RepSpec.SimVerf==1) then begin
+    tstr = USetStr(3019);
+    Header(rw,tstr,1);
+    rw = rw + 1;
+  end;
+  if (RepSpec.flags[1]!=0) then begin
+    tstr = USetStr(3197);
+    Header(rw,tstr,1);
+    rw = rw + 1;
+  end else begin
+    if (HasLocalization("ISL")) then begin//vatIcelandic
+      tstr = USetStr(3199);
+      Header(rw,tstr,1);
+      rw = rw + 1;
+    end;
+  end;
+  if (DatePrel(RepSpec.sEndDate)) begin
+    tstr = USetStr(3023);
+    Header(rw,tstr,1);
+    rw = rw + 1;
+  end;
+  if (nonblank(RepSpec.CurncyCode)) then begin
+    tstr = USetStr(7672);
+    tstr = tstr & ": ";
+    tstr = tstr & RepSpec.CurncyCode;
+    Header(rw,tstr,1);
+    rw = rw + 1;
+  end;  
+  if (IsBooks==false) then begin
+    if (RepSpec.flags[21]!=0) then begin
+      tstr = USetStr(6930);
+      Header(rw,tstr,1);
+      rw = rw + 1;
+    end;  
+    if (RepSpec.flags[22]!=0) then begin
+      tstr = USetStr(1329);
+      Header(rw,tstr,1);
+      rw = rw + 1;
+    end;          
+  end;
+  if (nonblank(RepSpec.f3)) then begin
+    tstr = USetStr(1318) & " " & RepSpec.f3;
+    Header(rw,tstr,1);
+    rw = rw + 1;
+  end;
+  EndHeader;  
+  SetRepCol(2,75);
+  if (RepSpec.ArtMode==1) then begin
+    SetRepCol(3,320);//288);
+    SetRepCol(4,400);//384);
+  end else begin
+    SetRepCol(3,314);
+    SetRepCol(4,384);
+  end;
+  SetRepCol(5,465);
+  SetRepCol(8,413);
+  SetRepCol(9,221);
+  if (RepSpec.flags[6]==1) then begin
+    SetRepCol(6,190);
+  end else begin
+    SetRepCol(6,160);
+  end;
+  if ((nonblank(RepSpec.ObjType)) or (RepSpec.flags[3]!=0)) then begin
+    SetRepCol(6,200);
+  end;
+  SetRepCol(7,120);
+  RETURN;      
+END;
+                     
+procedure RunMainRnForDaughterCompany(var record RcVc orgRepSpec,Date AccumStartDate,var Boolean resUseAccum,var val TotSumDebet,var val TotSumCredit,record SMVc VATSumr,Boolean printf,var val totsumFwBal,var val TotSumBal,var LongInt TotTransCnt)
+begin  
+  record DaughterCompBlock DCb;
+  row DaughterCompBlock DCrw;
+  Integer i,rwcnt;
+  record RcVc RepSpec;
+  record ConsolidationBlock cr;
+  val lTotSumDebet,lTotSumCredit,lTotSumFwBal,lTotSumBal;
+  LongInt lTotTransCnt;
+  Integer olddaucomp;
+
+  olddaucomp = CurrentCompany;
+  BlockLoad(DCb);
+  rwcnt = MatRowCnt(DCb);
+  for (i=0;i<rwcnt;i=i+1) begin
+    MatRowGet(DCb,i,DCrw);
+    if (SetCompanyCode(DCrw.CompCode,false)) then begin
+      BlockLoad(cr);
+
+      StartFormat(15);
+       OutString(0,0,DCrw.CompName,false);
+      EndFormat;   
+      RepSpec = orgRepSpec;
+//      if (RepSpec.basecurncy!=kReportBCOneConsolidationRate) then begin
+      if (RepSpec.flags[12]!=kReportBCOneConsolidationRate) then begin
+        RepSpec.basecurncy = cr.ConsCrncy;  
+      end;
+      if (nonblankdate(DCrw.StartDate)) then begin 
+        if (DCrw.StartDate>RepSpec.sStartDate) then begin
+          RepSpec.sStartDate = DCrw.StartDate; 
+        end;
+      end;
+      if (nonblankdate(DCrw.EndDate)) then begin 
+        if (DCrw.EndDate>RepSpec.sEndDate) then begin
+          RepSpec.sEndDate = DCrw.EndDate; 
+        end;
+      end;
+      RunMainRn(RepSpec,true,AccumStartDate,resUseAccum,lTotSumDebet,lTotSumCredit,VATSumr,true,lTotSumFwBal,lTotSumBal,lTotTransCnt);
+      TotSumDebet = TotSumDebet + lTotSumDebet;
+      TotSumCredit = TotSumCredit + lTotSumCredit;
+      TotSumFwBal = TotSumFwBal + lTotSumFwBal;
+      TotSumBal = TotSumBal + lTotSumBal;
+      TotTransCnt = TotTransCnt + lTotTransCnt;
+      RunMainRnForDaughterCompany(orgRepSpec,AccumStartDate,resUseAccum,TotSumDebet,TotSumCredit,VATSumr,true,TotSumFwBal,TotSumBal,TotTransCnt);
+    end;
+  end;
+  ResetCompany(olddaucomp);
+  return;
+end;
+
+procedure RunMainRnPerCompany(var record RcVc orgRepSpec,Date AccumStartDate,var Boolean resUseAccum,var val TotSumDebet,var val TotSumCredit,record SMVc VATSumr,Boolean printf,var val totsumFwBal,var val TotSumBal,var LongInt TotTransCnt)
+BEGIN
+  record DaughterCompBlock DCb;
+  row DaughterCompBlock DCrw;
+  Integer i,rwcnt;
+  Integer oldcomp;
+  record RcVc RepSpec;
+  record ConsolidationBlock cr;
+  val lTotSumDebet,lTotSumCredit,lTotSumFwBal,lTotSumBal;
+  LongInt lTotTransCnt;
+  record CompaniesBlock Cb;
+  row CompaniesBlock Cbrw;
+
+  BlockLoad(Cb);
+  rwcnt = MatRowCnt(Cb);
+  for (i=0;i<rwcnt;i=i+1) begin
+    if ((i+1)==CurrentCompany) then begin
+      MatRowGet(Cb,i,Cbrw);
+      i = rwcnt;
+    end;
+  end;
+
+  StartFormat(15);
+   OutString(0,0,Cbrw.CompName,false);
+  EndFormat;   
+
+  RepSpec = orgRepSpec;
+  RepSpec.IncDaughter = 0;
+  RunMainRn(RepSpec,true,AccumStartDate,resUseAccum,lTotSumDebet,lTotSumCredit,VATSumr,true,lTotSumFwBal,lTotSumBal,lTotTransCnt);
+  TotSumDebet = TotSumDebet + lTotSumDebet;
+  TotSumCredit = TotSumCredit + lTotSumCredit;
+  TotSumFwBal = TotSumFwBal + lTotSumFwBal;
+  TotSumBal = TotSumBal + lTotSumBal;
+  TotTransCnt = TotTransCnt + lTotTransCnt;
+
+  oldcomp = RepSpec.flags[29];  //flags[29] is set in DblNLFunc
+  
+  RunMainRnForDaughterCompany(orgRepSpec,AccumStartDate,resUseAccum,TotSumDebet,TotSumCredit,VATSumr,true,TotSumFwBal,TotSumBal,TotTransCnt);
+  
+  ResetCompany(oldcomp);
+  RETURN;
+END;
+                     
+procedure SetReportSpecification(var record RcVc RepSpec,Integer conscompany)
+begin
+  record DaughterCompBlock DCb;
+  row DaughterCompBlock DCrw;
+  Integer i,rwcnt;
+  Integer oldcomp;
+  
+  oldcomp = CurrentCompany;
+  if (SetCompany(conscompany,false)) then begin
+    BlockLoad(DCb);
+    rwcnt = MatRowCnt(DCb);
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(DCb,i,DCrw);
+      if (RepSpec.flags[29]==StringToInt(DCrw.CompCode)) then begin
+        if (nonblankdate(DCrw.StartDate)) then begin RepSpec.sStartDate = DCrw.StartDate; end;
+        if (nonblankdate(DCrw.EndDate)) then begin RepSpec.sEndDate = DCrw.EndDate; end;
+      end;
+    end;
+  end;
+  ResetCompany(oldcomp);
+  return;
+end;
+                     
+global
+procedure MainCustRn(record RcVc specRepSpec) //cust
+BEGIN
+  Date AccumStartDate;
+  Boolean resUseAccum;
+  val TotSumDebet,TotSumCredit;
+  val TotSumFwBal,TotSumBal;
+  LongInt TotTransCnt;
+  record SMVc VATSumr;
+  Date sd,ed;
+  record RcVc RepSpec;
+  Integer oldcomp;
+    
+  RepSpec = specRepSpec;
+  oldcomp = CurrentCompany;
+
+  if (RepSpec.flags[29]!=0) then begin
+    if (SetCompany(RepSpec.flags[29],false)) then begin
+    end;
+  end;
+// Pageheader 
+//  strpblank(gPageHeader);
+  TotSumFwBal = 0; TotSumBal = 0;
+  FindAccSD(RepSpec.sStartDate,AccumStartDate,resUseAccum);
+  resUseAccum=false;//cust+
+  StartReportJob(USetStr(3181));
+  MainListTopHdrs(RepSpec,resUseAccum,AccumStartDate);  
+  if (RepSpec.ArtMode==0) then begin
+    StartFormat(10);
+    EndFormat;
+  end else begin
+    StartFormat(20);
+    OutString(0,0,USetStr(3242),false);
+    OutString(50,0,USetStr(3243),false);
+    OutStringAdjustBiDi(240,0,USetStr(3193),true,M4Val,280);
+    OutStringAdjustBiDi(3,0,USetStr(3187),true,M4Val,360);
+    OutStringAdjustBiDi(4,0,USetStr(3188),true,M4Val,440);
+    OutStringAdjustBiDi(1,0,USetStr(3189),true,M4Val,510);
+    EndFormat;
+  end;
+  if (CountRecords("TRVc")<=0) then begin
+    StartFormat(15);
+    OutString(0,0,USetStr(3190),false);
+    EndFormat;
+  end;
+  ClearAcums;
+  if (RepSpec.Media==mtPrinter) then begin
+    if (RepSpec.sStartDate!=AccumStartDate) then begin
+      sd = RepSpec.sStartDate;
+      ed = RepSpec.sEndDate;
+      RepSpec.sStartDate = AccumStartDate;
+      RepSpec.sEndDate = AddDay(sd,-1);
+      RunMainRn(RepSpec,false,AccumStartDate,resUseAccum,TotSumDebet,TotSumCredit,VATSumr,false,totsumFwBal,TotSumBal,TotTransCnt);
+      RepSpec.sStartDate = sd;
+      RepSpec.sEndDate = ed;
+    end;
+  end;
+  TotTransCnt = 0;
+  if (RepSpec.IncDaughter!=0) then begin
+    RunMainRnPerCompany(RepSpec,AccumStartDate,resUseAccum,TotSumDebet,TotSumCredit,VATSumr,true,totsumFwBal,TotSumBal,TotTransCnt);
+    if (RepSpec.flags[12]==kReportBCOneConsolidationRate) then begin
+      StartFormat(15);
+      EndFormat;
+      Black_Divider(0,1);
+      StartFormat(15);
+      OutString(6,0,USetStr(6797),false);
+      OutValBiDi(3,0,TotSumDebet,M4Val,true,360);
+      OutValBiDi(4,0,TotSumCredit,M4NegVal,true,440);
+      EndFormat;
+      StartFormat(15);
+      OutString(6,0,USetStr(3193),false);
+      OutValBiDi(5,0,totsumFwBal,M4Val,true,425);
+      EndFormat;
+      StartFormat(15);
+      OutString(6,0,USetStr(3194),false);
+      OutValBiDi(3,0,TotSumDebet+TotSumCredit,M4Val,true,360);
+      OutValBiDi(4,0,TotSumDebet+TotSumCredit,M4CVal,true,440);
+      EndFormat;
+      StartFormat(15);
+      OutString(20,0,USetStr(3205) & ":",false);
+      OutLongInt(100,0,TotTransCnt,false);
+      OutString(6,0,USetStr(4993),false);
+      OutValBiDi(5,0,totsumFwBal+TotSumDebet+TotSumCredit,M4Val,true,425);
+      EndFormat;
+    end;
+  end else begin
+    if (RepSpec.flags[29]!=0) then begin
+      SetReportSpecification(RepSpec,oldcomp);    
+    end;
+    RunMainRn(RepSpec,false,AccumStartDate,resUseAccum,TotSumDebet,TotSumCredit,VATSumr,true,TotSumFwBal,TotSumBal,TotTransCnt);
+
+    StartFormat(15);
+    OutString(6,0,USetStr(3196),false);
+    if (RepSpec.Media==mtFile) or (RepSpec.Media==mtExcel) then begin
+      OutEmpty(RepSpec,2);
+      if (RepSpec.ArtMode!=1) then begin
+        OutString(0,0,"",false);
+      end;
+    end;
+    if (RepSpec.ArtMode==1) then begin
+      OutValBiDi(240,0,TotSumFwBal,M4Val,true,280);
+    end;
+    OutValBiDi(3,0,TotSumDebet,M4Val,true,360);
+    OutValBiDi(4,0,TotSumCredit,M4NegVal,true,440);
+    if (RepSpec.ArtMode==1) then begin
+      OutValBiDi(1,0,TotSumBal,M4Val,true,510);
+    end;
+    EndFormat;
+    if (RepSpec.flags[4]!=0) then begin ListPerTrans(RepSpec); end;
+    if (RepSpec.flags[5]!=0) then begin
+      PrintVATCodesSubtotals(RepSpec,VATSumr);
+    end;
+  end;
+  EndJob;
+  if (RepSpec.flags[29]!=0) then begin
+    ResetCompany(oldcomp);
+  end;
+  RETURN;
+END;
+
+ 
