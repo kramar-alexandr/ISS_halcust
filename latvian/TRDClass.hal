@@ -602,3 +602,39 @@ begin
   end;
   EndWindow;
 end;
+
+window MonthResRClass:1 
+  wtag("language","LAT"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real h,v,vm;
+  WindowBegin("Set your income statement on a monthly basis",MonthResRClass,CGRcW,RcType);
+  SetWRect(20,80,580,250);
+  PeriodField(h=150,v=6,"Period (max.12 months)");
+  if (HasObjects) then begin
+  EditFieldTL(h,v+=20,150,"Object",M4UStr,Normal,60 ,ObjStr,false,ObjSClass);
+  EditFieldTL(h,v+=20,50,"Object type",M4UStr,Normal,5 ,ObjType,false,OTSClass);
+  end;
+  vm=v;
+  if (HasMultiCurrency) then begin
+  EditField(h,v+=20,50,"Currency",Normal,CurncyCode,false,CurncyCodeSClass);
+  end;
+  if (HasLanguages) then begin
+  EditField(h,v+=20,50,"Language",Normal,Language,false,LangSClass);  
+  end;
+  EditFieldTL(395,6,120,"Header",M4Str,Normal,60 ,f1,false,0);
+  ButtonFrame(h=395,v=vm,123,5,"Accounts");
+  RadioButton(h,v,0,0,"Everything",AccSpec);
+  RadioButton(h,v+=16,1,0,"Only used",AccSpec);
+  if (HasAdvancedAccounting or HasLocalization("FIN")) then begin
+  RadioButton(h,v+=16,2,0,"Only groups",AccSpec);
+  RadioButton(h,v+=16,3,0,"groups",AccSpec);
+  RadioButton(h,v+=16,4,0,"with a balance",AccSpec);
+  end;
+  EndFrame;
+  if (HasBase2) then begin
+  ButtonFrame(h=230,v=vm+30,123,2,"Values");
+  RadioButton(h,v,0,0,"Curncy 1",basecurncy);
+  RadioButton(h,v+=16,1,0,"Curncy 2",basecurncy);
+  end;
+  EndWindow;
+end;

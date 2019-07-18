@@ -6,7 +6,8 @@ begin
   Setting("E-arvete seadistused",EInvoiceTClass,modSY);
   Maintenance("MŠŠra e-arve kanalid",DefEInvRcvPrefVClass,DefEInvRcvPrefMn,modSL);//Bk //##ii
   Setting("E-teenuste ajastamine",EInvQueryIntrvlTClass,modSY);
-
+	
+	Report("Income statement by month",MonthResRClass,MonthResRn,0,modNL);
   SetBegin(667);
   SetText(0,"Vali teenus");
   SetText(1,"HansaWorld"); 
