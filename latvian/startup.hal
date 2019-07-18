@@ -3,7 +3,8 @@ begin
   SetLangMode(LangLatvian,"LAT",0);
   
   Export("XML arve",eInvoiceEClass,eInvoiceEn,modSL);
-
+	
+	Report("Income statement by month",MonthResRClass,MonthResRn,0,modNL);
   SetBegin(667);
   SetText(0,"Vali teenus");
   SetText(1,"HansaWorld"); 

@@ -1,0 +1,8 @@
+event startup
+begin
+  	
+	Report("Income statement by month",MonthResRClass,MonthResRn,0,modNL);
+  
+  return;
+end;
+
