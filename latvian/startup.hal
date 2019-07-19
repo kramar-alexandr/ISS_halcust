@@ -11,7 +11,22 @@ begin
   SetText(2,"Arvete saatmine (Omniva)");
   SetText(3,"Tarnija arvete vastuvõtmine (Omniva)");
   EndSet;
-
+	
+	SString(1023408,"Jan.");
+  SString(1023409,"Feb.");
+  SString(1023410,"March");
+  SString(1023411,"April");
+  SString(1023412,"May");
+  SString(1023413,"June");
+  SString(1023414,"July");
+  SString(1023415,"Aug.");
+  SString(1023416,"Sept.");
+  SString(1023417,"Oct.");
+  SString(1023418,"Nov.");
+  SString(1023419,"Des.");
+  SString(1023420,"The period is more than 12 months");
+  SString(34575,"special arrangements");
+	
   return;
 end;
 
