@@ -1,0 +1,50 @@
+//<halrule>server-only</halrule>
+
+global
+updating procedure SQLConnectionTask(string args)
+begin
+  record RDBRegsBlock RDBr;
+  row RDBRegsBlock RDBrw;
+  Integer i,rwcnt;
+  Boolean updf;
+
+  BlockLoad(RDBr);
+  rwcnt = MatRowCnt(RDBr);
+  for (i=0;i<rwcnt;i=i+1) begin
+    MatRowGet(RDBr,i,RDBrw);
+    if (RDBrw.Valid==0) then begin
+      if (BuildRDBData(RDBrw.RegCode)) then begin  
+        RDBrw.Valid = 1;
+        MatRowPut(RDBr,i,RDBrw);
+        updf = true;
+      end else begin
+        LogText(0,"Failed to re-establish SQL connection for register " & RDBrw.RegCode);
+      end;
+    end;
+  end;
+  if (updf) then begin
+    BlockStore(RDBr);
+  end;
+
+  return;
+end;
+
+global
+procedure InitCheckSQLConnection()
+begin
+  record ISS_SQLConnBlock SCb;
+  Date td;
+  Time tt;
+  
+  BlockLoad(SCb);
+  if (SCb.CheckFlag==1) then begin
+    td = CurrentDate;
+    tt = SCb.CheckTime;
+    if (tt<CurrentTime) then begin
+      td = AddDay(td,1);
+    end;
+    NewTimedTask("SQLConnectionTask","SQLConnectionTask","SQLConnectionTask","",td,tt,"","");
+  end;
+
+  return;
+end;

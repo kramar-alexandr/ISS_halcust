@@ -1,0 +1,13 @@
+window ISS_SQLConnTClass:1
+  wtag("language","LIT"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real h,v;
+  WindowBegin("ISS - SQL Connection",ISS_SQLConnTClass,CGSbl,-);
+  SetBlid(ISS_SQLConnBlock);
+  SetWRect(20,80,400,190);
+  Sizeable(-1,-1,0,0);
+  h = 100;
+  CheckBox(h,v=10,0,"Automatically re-establish Connection",CheckFlag);
+  EditField(h,v+=20,50,"Time",Normal,CheckTime,false,PasteCurTime);
+  EndWindow;
+end;

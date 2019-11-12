@@ -14,6 +14,12 @@ begin
   SourceFile("halcust\\level0\\ETEENUSED\\amainhal", 0);
   SourceFile("halcust\\level0\\ETEENUSED\\Ractions", 0);
   SourceFile("halcust\\level0\\ETEENUSED\\Tools", 0);
+
+  BlockBegin(ISS_SQLConnBlock,-,"");
+  RecordField(CheckFlag,M4Int,0,0);
+  RecordField(CheckTime,M4Time,0,0);
+  EndBlock;
+
   return;
 end;
 

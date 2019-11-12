@@ -1,0 +1,23 @@
+//<halrule>server-only</halrule>
+
+global
+updating function LongInt ISS_SQLConnBlockCheck(var record ISS_SQLConnBlock SCb,record ISS_SQLConnBlock SC2b,LongInt stat,LongInt long4)
+BEGIN
+  LongInt res;
+  Time deftime;
+
+  res = 0;
+
+  if (SCb.CheckFlag==1) then begin
+    deftime = "00:00:00";
+    if (blank(SCb.CheckTime) or SCb.CheckTime==deftime) then begin
+      res = -1;
+      RecordCheckError(1058,"",-1,"CheckTime");
+      goto LISS_SQLConnBlockCheck;
+    end;
+  end;
+
+LISS_SQLConnBlockCheck:;
+  ISS_SQLConnBlockCheck = res;
+  return;
+end;

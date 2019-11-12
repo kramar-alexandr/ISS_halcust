@@ -1,0 +1,15 @@
+//<halrule>server-only</halrule>
+external procedure InitCheckSQLConnection();
+
+global
+updating procedure OnApplicationStartupComplete()
+begin
+  
+  inner.OnApplicationStartupComplete;
+
+  if (ServerMode) then begin
+    InitCheckSQLConnection;
+  end;
+
+  return;
+end;
