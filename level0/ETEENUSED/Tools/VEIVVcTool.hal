@@ -46,7 +46,7 @@ begin
     if (blank(costacc)) then begin
       costacc = VEIVCostAcc;
     end;
-    if (HasLocalization("EST")) then begin
+    if (HasLocalization("EST,LVA,LTU")) then begin
       if (blank(costacc)) then begin
   	    INr.Code = VEIVrw.ArtCode;
   	     if (ReadFirstMain(INr,1,true)) then begin
@@ -412,7 +412,7 @@ begin
   
   BlockLoad(EIb);
   GroupByAcc = EIb.VEIVRowTransfer==0;
-  if (HasLocalization("EST")) then begin
+  if (HasLocalization("EST,LVA,LTU")) then begin
     UseRowComment = EIb.VEIVRowComment==1;
   end;
   res = 1434;
@@ -732,7 +732,7 @@ begin
 
   BlockLoad(EIb);
   GroupByAcc = EIb.VEIVRowTransfer==0;
-  if (HasLocalization("EST")) then begin
+  if (HasLocalization("EST,LVA,LTU")) then begin
     UseRowComment = EIb.VEIVRowComment==1;
   end;
   res = 1434;

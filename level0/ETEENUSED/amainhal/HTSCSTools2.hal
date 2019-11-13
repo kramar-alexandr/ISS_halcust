@@ -268,7 +268,7 @@ BEGIN
   if (IVr.CAEAFlag!=0) then begin
     filename = "ArgIVVc";
   end else begin
-   if (HasLocalization("EST")) and (EIb.OutEstEInvoices!=0) then begin
+   if (HasLocalization("EST,LVA,LTU")) and (EIb.OutEstEInvoices!=0) then begin
       filename = "estIVVc";
     end else begin
       filename = "IVVc";
@@ -1864,7 +1864,7 @@ begin
   res = 1;
   BlockLoad(EIb);
   if (IVr.CAEAFlag==0) then begin
-    if (HasLocalization("EST")) and (EIb.OutEstEInvoices==1) then begin
+    if (HasLocalization("EST,LVA,LTU")) and (EIb.OutEstEInvoices==1) then begin
       filename = "estIVVc";
     end else begin
       filename = "IVVc";

@@ -663,7 +663,7 @@ begin
       UpdateBrowses("VEIVVc");
     end;
   end;
-  if (HasLocalization("EST")) then begin
+  if (HasLocalization("EST,LVA,LTU")) then begin
     if ((VIr.OKFlag!=0) and (VI2r.OKFlag==0)) then begin
       BlockLoad(CYb);
       BlockLoad(IEb);

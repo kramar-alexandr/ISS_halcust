@@ -1,5 +1,6 @@
 //<halrule>server-only</halrule>
 external procedure InitCheckSQLConnection();
+external inner procedure InitSysRunEstIdleTasks();
 
 global
 updating procedure OnApplicationStartupComplete()
@@ -9,6 +10,12 @@ begin
 
   if (ServerMode) then begin
     InitCheckSQLConnection;
+  end;
+
+  if (ServerMode or SingleUserMode) then begin
+    if (!HasLocalization("EST")) then begin
+      InitSysRunEstIdleTasks;
+    end;
   end;
 
   return;
