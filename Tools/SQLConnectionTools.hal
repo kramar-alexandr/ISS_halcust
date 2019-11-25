@@ -7,6 +7,11 @@ begin
   row RDBRegsBlock RDBrw;
   Integer i,rwcnt;
   Boolean updf;
+  record ISS_SQLConnBlock SCb;
+  Date td;
+  Time tt;
+
+  BlockLoad(SCb);
 
   BlockLoad(RDBr);
   rwcnt = MatRowCnt(RDBr);
@@ -25,6 +30,13 @@ begin
   if (updf) then begin
     BlockStore(RDBr);
   end;
+
+  td = CurrentDate;
+  tt = SCb.CheckTime;
+  if (tt<CurrentTime) then begin
+    td = AddDay(td,1);
+  end;
+  NewTimedTask("SQLConnectionTask" & GetCurTick,"SQLConnectionTask" & GetCurTick,"SQLConnectionTask","",td,tt,"","");
 
   return;
 end;
