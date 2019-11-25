@@ -31,11 +31,8 @@ begin
     BlockStore(RDBr);
   end;
 
-  td = CurrentDate;
+  td = AddDay(CurrentDate,1);
   tt = SCb.CheckTime;
-  if (tt<CurrentTime) then begin
-    td = AddDay(td,1);
-  end;
   NewTimedTask("SQLConnectionTask" & GetCurTick,"SQLConnectionTask" & GetCurTick,"SQLConnectionTask","",td,tt,"","");
 
   return;
