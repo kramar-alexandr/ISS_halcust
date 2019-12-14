@@ -637,3 +637,104 @@ begin
   end;
   EndWindow;
 end;
+
+window VIJRClass:1 //UGLY, magic please
+  wtag("language","ENG"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real h,v,vm,vs;
+  Boolean tilesf;
+  
+  WindowBegin("Specify #Purchase Invoice# Journal",VIJRClass,CGRcW,RcType);
+  SetWRect(20,80,470,320);
+  v = 6; vs = 20; h = 150;
+  tilesf = HasContactClassification or HasObjects;
+  if (tilesf) then begin
+    Tile(0,20,false,"",f1);
+  end;
+  EditFieldTL(h,v, 150,"No.",   M4Str,Normal,30,f1,false,0); v = v + vs;
+  if (tilesf) then begin
+    TileButtons(v,2);
+    Tile(1,280,false,"1",f2);
+    v = 6;
+  end;
+  PeriodField(h,v,"Period");
+  EditFieldTL(h,v+=vs ,75,"#Supplier#",M4UStr,Normal,20,f2,false,VESClass);
+  if (HasCategories) then begin
+    EditFieldTL(h,v+=vs,50,"#Supplier# Category",M4UStr,Normal,5,f9,false,VGSClass);
+  end;
+  if (HasContactClassification) then begin
+    EditFieldTL(h,v+=vs ,150,"#Supplier# Class.",M4UStr,Normal,60,f4,false,CClassSClass);
+    EditFieldTL(h,v+=vs ,70,"Classification Type",M4UStr,Normal,30,f5,false,CTypeSClass);
+  end;
+  if (HasApprovals) then begin
+    EditFieldTL(h,v+=vs ,75,"Signer",M4UStr,Normal,10,f3,false,UserSClass);
+  end;
+  if (HasObjects) then begin
+    EditFieldTL(h,v+=vs,250,"Tag/Object",M4UStr,Normal,60,ObjStr,false,ObjSClass);
+    EditFieldTL(h,v+=vs,50,"Tag/Object Type",M4UStr,Normal,5,ObjType,false,OTSClass);
+    EditFieldTL(h,v+=vs,250,"Row Tag/Object",M4UStr,Normal,60,f6,false,ObjSClass);
+  end;
+  if (HasModTS) then begin
+    EditFieldTL(h,v+=vs,50,"Project",M4UStr,Normal,20,TransStr,false,PRSClass);
+  end;
+  if (HasSalesman or HasSalesmanBonus) then begin
+    EditFieldTL(h,v+=vs ,100,"#Salesman#",M4UStr,Normal,10,AccStr,false,UserSClass);
+  end;
+  if (HasSalesGroup) then begin
+    EditFieldTL(h,v+=vs ,50,"Sales Group",M4UStr,Normal,10,Stext,false,SalesGroupSClass);
+  end;
+  if (HasAdvancedCRM) then begin
+    EditFieldTL(h,v+=vs ,50,"Min. amount",M4Val,Normal,0,vals0,false,0);
+  end;
+//CUST-BEGIN
+  EditFieldTL(h,v+=vs ,90,"Transaction date",M4Date,Normal,0,d2,false,PasteCurDate);
+//CUST-END
+
+  if (tilesf) then begin
+    Tile(2,320,false,"2",d1);
+    v = 6;
+  end;
+  if (IsEnterprise and StandardHansa==false) then begin
+    EditFieldTL(h,v,100,"Rcv. Date",M4Date,Normal,0,d1,false,PasteCurDate);
+  end;
+  if (HasModNL) then begin
+    EditFieldTL(h=150,v+=vs,100,"Cost Account",M4UStr,Normal,21,f7,false,AccSClass);
+    StaticText(h+110,v+12, "Detailed only",false);
+  end;
+  if (HasAdvancedAccounting) then begin
+    EditFieldTL(h=150,v+=vs,100,"Creditors Account",M4UStr,Normal,21,f8,false,AccSClass);
+    CheckBox(h,v+=vs,0,"Only Prel. Booked #Invoices#",flags[10]);
+    CheckBox(h,v+=16,0,"Only On Hold #Invoices#",flags[11]);
+  end;
+  h = 30; vm=v+50; v=vm;
+  if (HasModNL) then begin
+    ButtonFrame(h,v,143,4,"Function");
+    RadioButton(h,v,0,0,"Overview",ArtMode);
+    RadioButton(h,v+=16,1,0,"Detailed",ArtMode);
+    if (IsEnterprise) then begin
+      RadioButton(h,v+=16,2,0,"Overview with #VAT#",ArtMode);
+    end;
+    if (IsEnterprise or HasLocalization("ITA")) then begin
+      RadioButton(h,v+=16,3,0,"Overview per #VAT# %",ArtMode);
+    end;
+    EndFrame;
+    h= h+168; v = vm;
+  end else begin
+    h = 30;
+  end;
+  ButtonFrame(h,v,103,2,"Status");
+  CheckBox(h,v,0,"Not OKed",flags[1]);
+  CheckBox(h,v+=16,1,"O_Ked",flags[2]);
+  if (HasModNL) then begin
+    h = h + 128; v =  vm;
+  end else begin
+    h = h + 157; v =  vm;
+  end;
+  ButtonFrame(h,v,123,3,"#Invoice# Type");
+  CheckBox(h,v,0,"#Invoices#",flags[3]);
+  CheckBox(h,v+=16,0,"Cash Notes",flags[4]);
+  CheckBox(h,v+=16,0,"#Credit Notes#",flags[5]);
+
+//  CheckBox(h,v+=24,0,"Show #VAT# Amount",flags[15]);
+  EndWindow;
+end;

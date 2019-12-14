@@ -364,6 +364,11 @@ begin
           testf = false;
         end;
       end;
+//CUST-BEGIN
+      if (nonblank(RepSpec.d2) and VIr.TransDate!=RepSpec.d2) then begin
+        testf = false;
+      end;
+//CUST-END
       if (nonblank(RepSpec.vals0)) then begin
         rs = MulRateToBase1(VIr.CurncyCode,VIr.PayVal,VIr.FrRate,VIr.ToRateB1,VIr.ToRateB2,VIr.BaseRate1,VIr.BaseRate2,DefaultCurRoundOff);
         if (repSPec.vals0>rs) then begin
