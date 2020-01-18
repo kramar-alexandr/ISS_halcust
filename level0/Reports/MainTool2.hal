@@ -540,7 +540,7 @@ BEGIN
         end;
       end;
 //CUST-BEGIN
-      if (TRp.IntYc==VIYc) then begin
+      if (RepSpec.flags[29]==1 and TRp.IntYc==VIYc) then begin
         begin
           record VIVc VIr;
           VIr.SerNr = TRp.Number;
