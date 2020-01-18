@@ -56,3 +56,17 @@ begin
   DblNLFunc(dblstr,adstr,currepwn,1);
   return;
 end;
+
+global
+procedure MainRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  
+  inner.MainRClassReportDefaults(wn);
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  RepSpec.flags[29] = 1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  return;
+end;

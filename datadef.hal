@@ -14,6 +14,7 @@ begin
   SourceFile("halcust\\level0\\ETEENUSED\\amainhal", 0);
   SourceFile("halcust\\level0\\ETEENUSED\\Ractions", 0);
   SourceFile("halcust\\level0\\ETEENUSED\\Tools", 0);
+  SourceFile("halcust\\level0\\Reports", 0);
 
   BlockBegin(ISS_SQLConnBlock,-,"");
   BlockInServer;

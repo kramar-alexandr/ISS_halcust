@@ -267,10 +267,11 @@ external inner function Boolean HasConsStockMoveInvoices();
 
 procedure dummy()//##ii
 begin//##ii
-  SetLangMode(LangLithuanian,"LIT",2);//##ii
+  SetLangMode(LangLithuanian,"LIT",0);//##ii
   return;//##ii
 end;//##ii
 //##ii
+
 
 window TRDClass:2
   wtag("language","LIT"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
@@ -353,22 +354,22 @@ begin
   Flip(0);
   flipnr = 1;
   Flip(flipnr); flipnr = flipnr + 1;
-  MatCol(1,hpos=32,"SƒÖskaita",0,AccNumber,false,AccSClass); hpos = hpos + 69;
+  MatCol(1,hpos=32,"Sàskaita",0,AccNumber,false,AccSClass); hpos = hpos + 69;
   if (HasObjects) then begin
   MatCol(1,hpos,"Objektai",0,Objects,false,ObjSClass); hpos = hpos + 140;
 //  MatCol(1,-400,"Trumpas",0,ACShort,false,ACShortSClass); // what the hell is this? Karl
-     MatCol(1,hpos,"Apra≈°ymas",0,Comment,false,0); hpos = hpos + 160; // -349    
+     MatCol(1,hpos,"Apra‰ymas",0,Comment,false,0); hpos = hpos + 160; // -349    
   if (HasExtraNLComment) then begin
-     MatCol(1,hpos,"Papildomas apra≈°ymas",0,ExtraComment,false,0); hpos = hpos + 130; // -349  
+     MatCol(1,hpos,"Papildomas apra‰ymas",0,ExtraComment,false,0); hpos = hpos + 130; // -349  
   end;
   end else begin
 //  MatCol(1,-400,"Short.",0,ACShort,false,ACShortSClass); // what the hell is this? Karl
-    MatCol(1,hpos,"Apra≈°ymas",0,Comment,false,0);  hpos = hpos + 130; // -349
+    MatCol(1,hpos,"Apra‰ymas",0,Comment,false,0);  hpos = hpos + 130; // -349
     if (HasExtraNLComment) then begin
       if (HasLocalization("POL")) then begin
-        MatCol(1,hpos,"Papildomas apib≈´dinimas",0,ExtraComment,false,0); hpos = hpos + 100; // -349 
+        MatCol(1,hpos,"Papildomas apibdinimas",0,ExtraComment,false,0); hpos = hpos + 100; // -349 
       end else begin
-      MatCol(1,hpos,"Papild. apra≈°.",0,ExtraComment,false,0); hpos = hpos + 130; // -349
+      MatCol(1,hpos,"Papild. apra‰.",0,ExtraComment,false,0); hpos = hpos + 130; // -349
     end;
   end;
   end;
@@ -392,7 +393,7 @@ begin
     end;
   MatCol(1,-30,"PVM kd.",0,VATCode,false,VATCodeSClass);
   end;
-  MatText(2,32,"Para≈°as",true);
+  MatText(2,32,"Para‰as",true);
   MatColTL(2,108,"",0,M4Code,ViewOnly,0,Sign,false,0);
   MatText(2,160,"Senos oper. data",true);
   MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
@@ -404,17 +405,17 @@ begin
   MatColTL(4,215,"",0,M4AppCode,Normal,0,CorrNr,false,0);
   if (HasBase2) then begin
     Flip(flipnr); flipnr = flipnr + 1;
-  MatCol(1,hpos=32,"SƒÖskaita",0,AccNumber,false,AccSClass); hpos = hpos + 69;
+  MatCol(1,hpos=32,"Sàskaita",0,AccNumber,false,AccSClass); hpos = hpos + 69;
     if (HasObjects) then begin
       MatCol(1,hpos,"Objektai",0,Objects,false,ObjSClass); hpos = hpos + 140;
     end else begin
-      MatCol(1,hpos,"Apra≈°ymas",0,Comment,false,0); hpos = hpos + 160;
+      MatCol(1,hpos,"Apra‰ymas",0,Comment,false,0); hpos = hpos + 160;
     end;
   MatCol(1,-400,"Debetas",0,DebVal,true,0);
   MatCol(1,-300,"Kreditas",0,CredVal,true,0);
   MatCol(1,-200,"Debetas 2",0,DebVal2,true,0);
   MatCol(1,-100,"Kreditas 2",0,CredVal2,true,0);
-  MatText(2,32,"Para≈°as",true);
+  MatText(2,32,"Para‰as",true);
   MatCol(2,108,"",0,Sign,false,0);
   MatText(2,160,"Senos oper. data",true);
   MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
@@ -427,11 +428,11 @@ begin
   end;
   if (HasMultiCurrency) then begin
     Flip(flipnr); flipnr = flipnr + 1;
-  MatCol(1,hpos=32,"SƒÖskaita",0,AccNumber,false,AccSClass); hpos = hpos + 69;
+  MatCol(1,hpos=32,"Sàskaita",0,AccNumber,false,AccSClass); hpos = hpos + 69;
     if (HasObjects) then begin
   MatCol(1,hpos,"Objektai",0,Objects,false,ObjSClass); hpos = hpos + 140;
    end else begin
-  MatCol(1,hpos,"Apra≈°ymas",0,Comment,false,0); hpos = hpos + 160;    
+  MatCol(1,hpos,"Apra‰ymas",0,Comment,false,0); hpos = hpos + 160;    
     end;
     if (HasBase2) then begin
   MatCol(1,-410,"Debetas",0,DebVal,true,0);
@@ -443,7 +444,7 @@ begin
   MatCol(1,-250,"Valiuta",0,Curncy,false,CurncyCodeSClass);
   MatCol(1,-200,"Debetas valiuta",0,CurDebVal,true,0);
   MatCol(1,-100,"Kreditas valiuta",0,CurCredVal,true,0);
-  MatText(2,32,"Para≈°as",true);
+  MatText(2,32,"Para‰as",true);
   MatCol(2,108,"",0,Sign,false,0);
   MatText(2,160,"Senos oper. data",true);
   MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
@@ -454,11 +455,11 @@ begin
   MatText(4,32,"Pataisytos oper. nr.",true);
   MatColTL(4,215,"",0,M4AppCode,Normal,0,CorrNr,false,0);
     Flip(flipnr); flipnr = flipnr + 1;
-  MatCol(1,hpos=32,"SƒÖskaita",0,AccNumber,false,AccSClass); hpos = hpos + 69;
+  MatCol(1,hpos=32,"Sàskaita",0,AccNumber,false,AccSClass); hpos = hpos + 69;
     if (HasObjects) then begin
   MatCol(1,hpos,"Objektai",0,Objects,false,ObjSClass);  hpos = hpos + 140;
     end else begin
-  MatCol(1,hpos,"Apra≈°ymas",0,Comment,false,0); hpos = hpos + 160;    
+  MatCol(1,hpos,"Apra‰ymas",0,Comment,false,0); hpos = hpos + 160;    
     end;
     if (HasBase2) then begin
       MatCol(1,-400,"Valiuta",0,Curncy,false,CurncyCodeSClass); 
@@ -467,12 +468,12 @@ begin
     end else begin
       MatCol(1,-300,"Valiuta",0,Curncy,false,CurncyCodeSClass); 
     end;
-  MatCol(1,-210,"Pagal kursƒÖ",0,FrRate,true,0);
+  MatCol(1,-210,"Pagal kursà",0,FrRate,true,0);
   MatCol(1,-140,"Kursui 1",0,ToRateB1,true,0);
     if (HasBase2) then begin
   MatCol(1,-70,"Kursui 2",0,ToRateB2,true,0);
     end;
-  MatText(2,32,"Para≈°as",true);
+  MatText(2,32,"Para‰as",true);
   MatCol(2,108,"",0,Sign,false,0);
   MatText(2,160,"Senos oper. data",true);
   MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
@@ -488,18 +489,18 @@ begin
   MatCol(1,32,"T",0,Typ,false,SetSClass);
   MatCol(1,52,"Nr.",0,SerNr,false,ARSClass);
   MatCol(1,112,"Apmok. data",0,DueDate,false,PasteCurDate);
-  MatCol(1,184,"ƒÆmonƒó",0,CompCode,false,CUSClass);
+  MatCol(1,184,"Ømonò",0,CompCode,false,CUSClass);
   if (HasExtraNLComment) then begin
-  MatCol(1,-550,"Apra≈°ymas",0,Comment,false,0); 
-  MatCol(1,-410,"Papildomas apra≈°ymas",0,ExtraComment,false,0); 
+  MatCol(1,-550,"Apra‰ymas",0,Comment,false,0); 
+  MatCol(1,-410,"Papildomas apra‰ymas",0,ExtraComment,false,0); 
   end else begin
-  MatCol(1,-400,"Apra≈°ymas",0,Comment,false,0);
+  MatCol(1,-400,"Apra‰ymas",0,Comment,false,0);
   end;
-  MatCol(1,-290,"SƒÖskaita",0,AccNumber,false,AccSClass);
+  MatCol(1,-290,"Sàskaita",0,AccNumber,false,AccSClass);
   MatCol(1,-210,"Debetas",0,DebVal,true,0);
   MatCol(1,-120,"Kreditas",0,CredVal,true,0);
   MatCol(1,-30,"PVM kd.",0,VATCode,false,VATCodeSClass);
-  MatText(2,32,"Para≈°as",true);
+  MatText(2,32,"Para‰as",true);
   MatCol(2,108,"",0,Sign,false,0);
   MatText(2,160,"Senos oper. data",true);
   MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
@@ -510,21 +511,21 @@ begin
   MatText(4,32,"Pataisytos oper. nr.",true);
   MatColTL(4,215,"",0,M4AppCode,Normal,0,CorrNr,false,0);
     Flip(flipnr); flipnr = flipnr + 1;
-  MatCol(1,32,"SƒÖskaita",0,AccNumber,false,AccSClass);
+  MatCol(1,32,"Sàskaita",0,AccNumber,false,AccSClass);
     if (HasObjects) then begin
   MatCol(1,98,"Objektai",0,Objects,false,ObjSClass);
     end;
   if (HasExtraNLComment) then begin
-  MatCol(1,-590,"Apra≈°ymas",0,Comment,false,0); 
-  MatCol(1,-450,"Papildomas apra≈°ymas",0,ExtraComment,false,0); 
+  MatCol(1,-590,"Apra‰ymas",0,Comment,false,0); 
+  MatCol(1,-450,"Papildomas apra‰ymas",0,ExtraComment,false,0); 
   end else begin
-  MatCol(1,-420,"Apra≈°ymas",0,Comment,false,0);
+  MatCol(1,-420,"Apra‰ymas",0,Comment,false,0);
   end;
   MatCol(1,-330,"Nominalas",0,NomVal,true,0);
   MatCol(1,-230,"Debetas",0,DebVal,true,0);
   MatCol(1,-130,"Kreditas",0,CredVal,true,0);
   MatCol(1,-30,"Koresp.",0,CorspSer,false,0);
-  MatText(2,32,"Para≈°as",true);
+  MatText(2,32,"Para‰as",true);
   MatCol(2,108,"",0,Sign,false,0);
   MatText(2,160,"Senos op. data",true);
   MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
@@ -535,22 +536,22 @@ begin
   MatText(4,32,"Operacijos pataisymas",true);
   MatColTL(4,215,"",0,M4AppCode,Normal,0,CorrNr,false,0);
     Flip(flipnr); flipnr = flipnr + 1;
-  MatCol(1,32,"SƒÖskaita",0,AccNumber,false,AccSClass);
+  MatCol(1,32,"Sàskaita",0,AccNumber,false,AccSClass);
     if (HasObjects) then begin
   MatCol(1,98,"Objektai",0,Objects,false,ObjSClass);
     end;
   if (HasExtraNLComment) then begin
-  MatCol(1,-550,"Apra≈°ymas",0,Comment,false,0); 
-  MatCol(1,-380,"Papildomas apra≈°ymas",0,ExtraComment,false,0); 
+  MatCol(1,-550,"Apra‰ymas",0,Comment,false,0); 
+  MatCol(1,-380,"Papildomas apra‰ymas",0,ExtraComment,false,0); 
   end else begin
-  MatCol(1,-420,"Apra≈°ymas",0,Comment,false,0);
+  MatCol(1,-420,"Apra‰ymas",0,Comment,false,0);
   end;
     if (StandardHansa==false) then begin
-  MatCol(1,-260,"Mokest. sƒÖsk.",0,TAccNumber,false,TAccSClass);
+  MatCol(1,-260,"Mokest. sàsk.",0,TAccNumber,false,TAccSClass);
   MatCol(1,-180,"Kiekis",0,Qty,true,0);
     MatCol(1,-100,"SAFT tipas",0,SAFTType,false,SetSClass);
     end;
-  MatText(2,32,"Para≈°as",true);
+  MatText(2,32,"Para‰as",true);
   MatCol(2,108,"",0,Sign,false,0);
   MatText(2,160,"Senos op. data",true);
   MatColTL(2,290,"",0,-1,ViewOnly,-1,OldTransDate,false,0);
@@ -573,35 +574,34 @@ begin
     end;
   end;
   if (GuiType==kGuiMetro) then begin // Temporarily disabled on Windows 8
-  SpecialMenu("Subalansuoti operacijƒÖ",'B',0,"BalanceTRDsm");
-  SpecialMenu("Sukeisti debetƒÖ su kreditu",' ',1,"SwapDCTRDsm");
-    SpecialMenu("Koregavimo ≈æymƒó",' ',3,"CorrectionMarkTRDsm"); 
-    SpecialMenu("Atidaryti pirminƒØ ƒØra≈°ƒÖ",'t',6,"OpenSubsystemTRDsm"); 
+  SpecialMenu("Subalansuoti operacijà",'B',0,"BalanceTRDsm");
+  SpecialMenu("Sukeisti debetà su kreditu",' ',1,"SwapDCTRDsm");
+    SpecialMenu("Koregavimo Ïymò",' ',3,"CorrectionMarkTRDsm"); 
+    SpecialMenu("Atidaryti pirmin∞ ∞ra‰à",'t',6,"OpenSubsystemTRDsm"); 
     if (HasMultiCurrency) then begin
-      SpecialMenu("Atnaujinti valiut≈≥ kursus",' ',7,"UpdCurRateTRDsm"); 
+      SpecialMenu("Atnaujinti valiut˜ kursus",' ',7,"UpdCurRateTRDsm"); 
     end;
   end else begin
-  SpecialMenu("Subalansuoti operacijƒÖ",'B',0,"BalanceTRDsm"); 
-  SpecialMenu("Sukeisti debetƒÖ su kreditu",' ',1,"SwapDCTRDsm"); 
+  SpecialMenu("Subalansuoti operacijà",'B',0,"BalanceTRDsm"); 
+  SpecialMenu("Sukeisti debetà su kreditu",' ',1,"SwapDCTRDsm"); 
 //    if (HasIntegratedNL) then begin
     if (true) then begin
-  SpecialMenu("Atnaujinimo ≈æymƒó",' ',2,"UpdateMarkTRDsm");
-  SpecialMenu("Pataisymo ≈æymƒó",' ',3,"CorrectionMarkTRDsm");
+  SpecialMenu("Atnaujinimo Ïymò",' ',2,"UpdateMarkTRDsm");
+  SpecialMenu("Pataisymo Ïymò",' ',3,"CorrectionMarkTRDsm");
     end;
-  SpecialMenu("Skaiƒçiuoti laukƒÖ",'F',4,"CalcFieldTRDsm");
-  SpecialMenu("Pakeisti ≈ΩenklƒÖ",' ',5,"ChangeSignTRDsm");
+  SpecialMenu("Skaiãiuoti laukà",'F',4,"CalcFieldTRDsm");
+  SpecialMenu("Pakeisti Îenklà",' ',5,"ChangeSignTRDsm");
     if (HasIntegratedNL) then begin
-  SpecialMenu("Atidaryti pirminƒØ ƒØra≈°ƒÖ",'t',6,"OpenSubsystemTRDsm");
+  SpecialMenu("Atidaryti pirmin∞ ∞ra‰à",'t',6,"OpenSubsystemTRDsm");
     end;
   if (HasMultiCurrency) then begin
-  SpecialMenu("Atnaujinti valiut≈≥ kursus",' ',7,"UpdCurRateTRDsm");
+  SpecialMenu("Atnaujinti valiut˜ kursus",' ',7,"UpdCurRateTRDsm");
   end;
 	SpecMenuGroup("",kSpecMenuGroupTypeExtendedPlusMenu,0);
-	SpecialMenu("Pridƒóti sƒÖskaitƒÖ",' ',0,"AddAccountQTDsm");
+	SpecialMenu("Pridòti sàskaità",' ',0,"AddAccountQTDsm");
   end;
   EndWindow;
 end;
-
 
 window MonthResRClass:1 
   wtag("language","LIT"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
@@ -736,5 +736,166 @@ begin
   CheckBox(h,v+=16,0,"Kredito faktra",flags[5]);
 
 //  CheckBox(h,v+=24,0,"Show #VAT# Amount",flags[15]);
+  EndWindow;
+end;
+
+window MainRClass:1
+  wtag("language","LIT"), wtag("product","*"), wtag("productcode","*"), wtag("device","computer")
+begin
+  real h,h1,h2,h3,hacc,v,vm,vm2,vs;
+  Integer tilenr;
+
+  WindowBegin("DidÏioji knyga",MainRClass,CGRcW,RcType);
+  UseView(RcVc);
+  if (IsEnterprise) then begin
+  SetWRect(20,80,600,380);
+  Tile(0,40,false,"",Period2Str);
+  h = 180; h2 = 342;
+  end else begin
+    SetWRect(20,80,400,350);
+    h = 120;
+  end;
+  vs = 20;
+  hacc = 342;
+  PeriodField(h,v=6,"Periodas");
+  if (IsEnterprise) then begin
+    EditFieldTL(h,v+=vs,150,"Grandis 1",M4UStr,Normal,60,f4,false,AccSClass); 
+  TileButtons(v,2);
+  RadioButton(h2,v,0,0,"Sàskaitos",flags[11]);
+    tilenr = 1;
+    Tile(tilenr,340,false,tilenr,ObjStr); tilenr = tilenr + 1;
+  v = 6;
+  end else begin
+    EditFieldTL(h,v+=vs,150,"Sàskaitos",M4UStr,Normal,60,f4,false,AccSClass); 
+  end;
+  if (HasObjects) then begin
+    if (IsEnterprise) then begin
+  EditFieldTL(h,v,250,"Objektas",M4UStr,Normal,60 ,ObjStr,false,ObjSClass);
+    end else begin
+      EditFieldTL(h,v+=vs,150,"Objektas",M4UStr,Normal,60 ,ObjStr,false,ObjSClass); 
+    end;
+  EditFieldTL(h,v+=vs,50,"Objekto tipas",M4UStr,Normal,5 ,ObjType,false,OTSClass);
+  end;
+  if (IsEnterprise) then begin
+  CheckBox(350,v,0,"Øtraukti nenurodytas",flags[2]);
+  EditFieldTL(h,v+=vs,200,"Tik su tekstu",M4Str,Normal,30,Stext,false,0);
+  end else begin
+    EditFieldTL(h,v+=vs,150,"Tik su tekstu",M4Str,Normal,30,Stext,false,0); 
+  end;
+  if (HasModSL or HasModPOS or HasModPL or HasModRest) then begin
+    EditFieldTL(h,v+=vs,50,"PVM kodas",M4Code,Normal,10,f1,false,VATCodeSClass);
+  end;
+  if (HasLanguages) then begin
+    EditFieldTL(h,v+=vs,50,"Kalba",M4UStr,Normal,5,Language,false,LangSClass); 
+  end;
+  if (HasMultiCurrency) then begin
+    EditFieldTL(h,v+=vs,50,"Valiuta",M4UStr,Normal,5,CurncyCode,false,CurncyCodeSClass); 
+  end;
+  if (IsEnterprise) then begin
+  EditFieldTL(h,v+=vs,30,"Suderinimo kodas",M4UStr,Normal,5,f2,false,ReconCodeSClass);
+  CheckBox(220,v,0,"I‰skyrus su nurodytu kodu",flags[25]);
+    if (StandardHansa==false) then begin
+  EditFieldTL(h,v+=vs,250,"Nuoroda",M4Str,Normal,60,LastAcc,false,0);
+    end;
+  end;
+  if (HasObjects) then begin
+  EditFieldTL(h,v+=vs,80,"Ne∞traukti objekto",M4UStr,Normal,60,f3,false,ObjSClass);
+  end;
+  if (IsEnterprise) then begin
+  h1 = 15; h2 = 230; h3 = 395;
+  end else begin
+    h1 = 30; h2 = h1; h3 = 180;
+  end;
+  if (IsEnterprise) then begin
+    CheckBox(h1,vm=(v+=40),0,"Tiktai panaudotos sàskaitos",UsedOnly);
+  	CheckBox(h1,v+=16,0,"Rodyti nuorodas",flags[10]);
+  end else begin
+    ButtonFrame(h2,vm=(v+=40),123,2,"R‰iavimas");
+    RadioButton(h2,v,0,0,"Data ir tipas",flags[28]);
+    RadioButton(h2,v+=16,1,0,"Øvedimà",flags[28]);
+    CheckBox(h1,v+=56,0,"Tik panaudotos sàskaitos",UsedOnly);
+  end;
+  CheckBox(h1,v+=16,0,"Su koregavimais",flags[1]);
+  CheckBox(h1,vm2=(v+=16),0,"Sumoje PVM kodai",flags[5]);
+  if (IsEnterprise) then begin
+  CheckBox(h1,v+=16,0,"Sumoje PVM kodai, pagal sàskaitas",flags[27]);
+  end;
+  CheckBox(h1,v+=16,0,"I‰vardinti operacij˜ nr.",flags[4]); v = v + 16;
+  if (IsEnterprise) then begin
+    CheckBox(h1,v,0,"Nespausdinti operacijos kodo",flags[23]); v = v + 16;
+  end;
+  if (HasMultiCurrency) then begin
+    CheckBox(h1,v,0,"Rodyti valiutas",flags[8]); v = v + 16;
+  end;
+  if (HasBase2) then begin
+    CheckBox(h1,v,0,"Koresponduojanãios sàskaitos",flags[3]); v = v + 16;
+    CheckBox(h1,v,0,"Rodyti tik baz. val. 2 skirtumus",flags[24]); v = v + 16;
+  end;
+//CUST-BEGIN
+  CheckBox(h1,v,0,"Øtraukti tiekòj˜ fakt. nr.",flags[29]); v = v + 16;
+//CUST-END
+
+  if (IsEnterprise) then begin
+    ButtonFrame(h2,v=vm,123,2,"R‰iavimas");
+    RadioButton(h2,v,0,0,"Data ir tipas",flags[28]);
+    RadioButton(h2,v+=16,1,0,"Øvedimà",flags[28]);
+  end;
+  if (IsEnterprise) then begin
+    CheckBox(h2,v=vm2,0,"Tik likuãiai",ArtMode);
+    CheckBox(h2,v+=16,0,"Rodyti objektus",flags[6]);
+  end else begin
+    CheckBox(h1,v,0,"Tik likuãiai",ArtMode); v = v + 16;
+    CheckBox(h1,v,0,"Rodyti 0 vietoj tu‰ãi˜ eiluãi˜",flags[20]); v = v + 16;
+    if (HasObjects) then begin
+      CheckBox(h1,v,0,"Rodyti objektà",flags[6]); v = v + 16; 
+    end;
+    h2 = h1;
+  end;
+  if (HasAdvancedAccounting) then begin
+  CheckBox(h2,v+=16,0,"Nesuderinta",flags[21]);
+  CheckBox(h2,v+=16,0,"Suderinta",flags[22]);
+  end;
+  if (HasNLBudget) then begin
+    CheckBox(h2,v+=16,0,"Øtraukti biudÏetà",sflags[0]);
+  end;
+  ButtonFrame(h3,v=(vm),170,3,"Ilgos eilutòs");
+  RadioButton(h3,v,0,0,"Neperkelti",flags[7]);
+  RadioButton(h3,v+=16,1,0,"Perkelti",flags[7]);
+  RadioButton(h3,v+=16,2,0,"Nukirpti",flags[7]);
+  if (IsEnterprise) then begin
+  ButtonFrame(h3,v+=40,170,3,"Funkcija");
+  RadioButton(h3,v,0,0,"Rodyti visas operacijas",flags[26]);
+  RadioButton(h3,v+=16,1,0,"Rodyti oper. be dok. nr.",flags[26]);
+  RadioButton(h3,v+=16,2,0,"Rodyti oper. su dok. nr.",flags[26]);
+    Tile(tilenr,340,false,tilenr,f5); tilenr = tilenr + 1;
+  v = 6; h2 = 330;
+  EditFieldTL(h,v,140,"Grandis 2",M4UStr,Normal,60,f5,false,AccSClass);
+  RadioButton(hacc,v,1,0,"Sàskaitos",flags[11]);
+  EditFieldTL(h,v+=vs,140,"Grandis 3",M4UStr,Normal,60,f6,false,AccSClass);
+  RadioButton(hacc,v,2,0,"Sàskaitos",flags[11]);
+  end;
+  if (HasSimulations and HasModNL) then begin
+  h3 = 100;
+    if (!IsEnterprise) then begin h3 = 180; end;  
+  ButtonFrame(h3,vm=(v+=45),170,4,"Øtraukti imitacijas");
+  RadioButton(h3,v,0,0,"Ne∞traukti",SimVerf);
+  RadioButton(h3,v+=16,1,0,"Visas",SimVerf);
+  RadioButton(h3,v+=16,2,0,"Met˜ pabaigos stadija 1",SimVerf);
+  RadioButton(h3,v+=16,3,0,"Met˜ pabaigos stadija 1 ir 2",SimVerf);
+  end;
+  if (IsEnterprise) then begin
+  CheckBox(h3,v+=24,0,"Rodyti nulius vietoj tu‰ã. eil.",flags[20]);
+  end;
+  if (HasBase2) then begin
+    if (IsEnterprise) then begin
+  h3 = 300;
+  ButtonFrame(h3,v=vm,140,2,"Vertòs");
+    end else begin
+      h3 = 180;
+      ButtonFrame(h3,v+=40,170,2,"Vertòs"); 
+    end;
+  RadioButton(h3,v,0,0,"Bazine valiuta 1",basecurncy);
+  RadioButton(h3,v+=16,1,0,"Bazine valiuta 2",basecurncy);
+end;
   EndWindow;
 end;
