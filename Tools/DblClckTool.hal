@@ -65,7 +65,7 @@ begin
   inner.MainRClassReportDefaults(wn);
   DeselectWindow(wn,false);
   GetWindowRecord(wn,RepSpec);
-  RepSpec.flags[29] = 1;
+  RepSpec.sflags[9] = 1;
   PutWindowRecord(wn,RepSpec);
   SelectWindow(wn);
   return;

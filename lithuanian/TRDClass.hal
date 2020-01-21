@@ -832,7 +832,7 @@ begin
     CheckBox(h1,v,0,"Rodyti tik baz. val. 2 skirtumus",flags[24]); v = v + 16;
   end;
 //CUST-BEGIN
-  CheckBox(h1,v,0,"¯traukti tiek˜j÷ fakt. nr.",flags[29]); v = v + 16;
+  CheckBox(h1,v,0,"¯traukti tiek˜j÷ fakt. nr.",sflags[9]); v = v + 16;
 //CUST-END
 
   if (IsEnterprise) then begin

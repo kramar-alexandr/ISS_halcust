@@ -832,7 +832,7 @@ begin
     CheckBox(h1,v,0,"Show Base Currency 2 Differences only",flags[24]); v = v + 16;
   end;
 //CUST-BEGIN
-  CheckBox(h1,v,0,"Include Supplier Inv. No.",flags[29]); v = v + 16;
+  CheckBox(h1,v,0,"Include Supplier Inv. No.",sflags[9]); v = v + 16;
 //CUST-END
   if (IsEnterprise) then begin
     ButtonFrame(h2,v=vm,123,2,"Sorting");
