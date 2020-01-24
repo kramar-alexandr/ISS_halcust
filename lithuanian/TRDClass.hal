@@ -688,7 +688,7 @@ begin
   EditFieldTL(h,v+=vs ,50,"Min. suma",M4Val,Normal,0,vals0,false,0);
   end;
 //CUST-BEGIN
-  EditFieldTL(h,v+=vs ,90,"Registracijos apsk. data",M4Date,Normal,0,d2,false,PasteCurDate);
+  EditFieldTL(h,v+=vs ,150,"Registracijos apsk. data",M4Str,Normal,30,Period2Str2,false,PerSClass);
 //CUST-END
   if (tilesf) then begin
   Tile(2,320,false,"2",d1);

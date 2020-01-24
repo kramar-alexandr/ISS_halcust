@@ -365,7 +365,7 @@ begin
         end;
       end;
 //CUST-BEGIN
-      if (nonblank(RepSpec.d2) and VIr.TransDate!=RepSpec.d2) then begin
+      if (nonblank(RepSpec.Period2Str2) and DateInRange(VIr.TransDate,RepSpec.sStartDate2,RepSpec.sEndDate2)==false) then begin
         testf = false;
       end;
 //CUST-END
